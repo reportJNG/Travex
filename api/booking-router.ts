@@ -85,9 +85,15 @@ export const bookingRouter = createRouter({
         hotelDeadline,
       };
 
-      const result = await db.insert(bookings).values(bookingData as any);
+      const [createdBooking] = await db
+        .insert(bookings)
+        .values(bookingData as any)
+        .returning({ id: bookings.id });
 
-      const bookingId = Number(result[0].insertId);
+      if (!createdBooking) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CREATE_BOOKING_FAILED" });
+      }
+      const bookingId = createdBooking.id;
 
       if (input.paymentMethod !== "offline") {
         await db.insert(payments).values({

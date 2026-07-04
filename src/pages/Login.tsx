@@ -1,124 +1,105 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { LogIn } from "lucide-react";
 import { useI18n } from "@/i18n";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { trpc } from "@/providers/trpc";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LogIn } from "lucide-react";
-
-function getOAuthUrl() {
-  const kimiAuthUrl = import.meta.env.VITE_KIMI_AUTH_URL;
-  const appID = import.meta.env.VITE_APP_ID;
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
-
-  const url = new URL(`${kimiAuthUrl}/api/oauth/authorize`);
-  url.searchParams.set("client_id", appID);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "profile");
-  url.searchParams.set("state", state);
-
-  return url.toString();
-}
 
 export default function Login() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const utils = trpc.useUtils();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const loginMutation = trpc.auth.login.useMutation({
+    onSuccess: async () => {
+      await utils.invalidate();
+      navigate("/");
+    },
+    onError: () => setError("Invalid email or password"),
+  });
 
-  // For demo: simulate login with registration
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
     setError("");
-    setLoading(true);
-
-    try {
-      // In the real app, this would call an auth endpoint
-      // For demo, we use OAuth
-      setError("Please use Sign in with Kimi for authentication");
-    } catch {
-      setError("Login failed");
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate({ email, password });
   };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-2">
-          <img src="/logo.png" alt="TRAVEX" className="h-12 w-auto mx-auto" />
-          <CardTitle className="text-xl">{t("auth.login")}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t("auth.email")}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              <LogIn className="h-4 w-4 me-2" />
-              {loading ? "..." : t("auth.signIn")}
-            </Button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-slate-500">or</span>
-            </div>
+    <div className="grid min-h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border bg-card shadow-sm lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="hidden bg-slate-950 lg:block">
+        <div className="relative h-full min-h-[560px]">
+          <img src="/hotel-lobby.jpg" alt="Hotel lobby" className="absolute inset-0 h-full w-full object-cover opacity-70" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-transparent" />
+          <div className="absolute bottom-0 p-10 text-white">
+            <img src="/logo.png" alt="TRAVEX" className="mb-6 h-12 w-auto" />
+            <h2 className="max-w-md text-3xl font-semibold tracking-tight">Welcome back to Travex operations.</h2>
+            <p className="mt-4 max-w-md text-sm leading-6 text-slate-200">
+              Manage bookings, hotel inventory, requests, invoices, and account reviews from one trusted B2B platform.
+            </p>
           </div>
+        </div>
+      </div>
 
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => {
-              window.location.href = getOAuthUrl();
-            }}
-          >
-            Sign in with Kimi
-          </Button>
+      <div className="flex items-center justify-center p-4 sm:p-8">
+        <Card className="w-full max-w-md border-0 shadow-none">
+          <CardHeader className="px-0 text-center sm:text-left">
+            <img src="/logo.png" alt="TRAVEX" className="mx-auto h-12 w-auto sm:mx-0 lg:hidden" />
+            <CardTitle className="mt-4 text-2xl">{t("auth.login")}</CardTitle>
+            <p className="text-sm text-muted-foreground">Sign in to continue to your workspace.</p>
+          </CardHeader>
+          <CardContent className="px-0">
+            {error ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
 
-          <p className="text-center text-sm text-slate-500">
-            {t("auth.noAccount")}{" "}
-            <Link to="/register" className="text-teal-600 hover:underline font-medium">
-              {t("auth.register")}
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t("auth.email")}</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="email@example.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">{t("auth.password")}</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="********"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                <LogIn className="me-2 h-4 w-4" />
+                {loginMutation.isPending ? t("loading") : t("auth.signIn")}
+              </Button>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              {t("auth.noAccount")}{" "}
+              <Link to="/register" className="font-medium text-primary hover:underline">
+                {t("auth.register")}
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

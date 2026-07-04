@@ -1,65 +1,79 @@
+import { Link } from "react-router";
+import { BarChart3, Building2, RefreshCw, Receipt, Shield, Users } from "lucide-react";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StatCard } from "@/components/app/StatCard";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Shield, Users, Building2, Receipt, BarChart3, RefreshCw } from "lucide-react";
 
 export default function AdminDashboard() {
   const { t } = useI18n();
-  const { data: stats, refetch } = trpc.admin.stats.useQuery();
-
-  const statCards = [
-    { label: t("admin.agencies"), value: stats?.agencies || 0, icon: Users, color: "text-blue-600 bg-blue-50" },
-    { label: t("admin.hotels"), value: stats?.hotels || 0, icon: Building2, color: "text-teal-600 bg-teal-50" },
-    { label: t("admin.transactions"), value: stats?.transactionsCount || 0, icon: Receipt, color: "text-green-600 bg-green-50" },
-    { label: t("admin.volume"), value: stats ? `${(stats.transactionsVolume / 1000).toFixed(0)}K DZD` : "0 DZD", icon: BarChart3, color: "text-purple-600 bg-purple-50" },
-  ];
+  const { data: stats, refetch, isFetching } = trpc.admin.stats.useQuery();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <Shield className="h-6 w-6" />
-          {t("admin.title")}
-        </h1>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 me-1" /> Refresh
-        </Button>
+    <div>
+      <PageHeader
+        eyebrow="Command center"
+        title={t("admin.title")}
+        description="Monitor platform health, verification queues, users, and claim activity from one place."
+        actions={
+          <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`me-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        }
+      />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label={t("admin.agencies")} value={stats?.agencies || 0} icon={<Users className="h-5 w-5" />} />
+        <StatCard label={t("admin.hotels")} value={stats?.hotels || 0} icon={<Building2 className="h-5 w-5" />} tone="green" />
+        <StatCard label={t("admin.transactions")} value={stats?.transactionsCount || 0} icon={<Receipt className="h-5 w-5" />} />
+        <StatCard
+          label={t("admin.volume")}
+          value={stats ? `${(stats.transactionsVolume / 1000).toFixed(0)}K DZD` : "0 DZD"}
+          icon={<BarChart3 className="h-5 w-5" />}
+          tone="amber"
+        />
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="p-4">
-              <div className={`h-10 w-10 rounded-lg ${s.color} flex items-center justify-center mb-3`}>
-                <s.icon className="h-5 w-5" />
+      <div className="grid gap-4 lg:grid-cols-3">
+        {[
+          {
+            title: "Review verifications",
+            description: "Approve or reject new hotel and agency accounts awaiting review.",
+            href: "/admin/verifications",
+            icon: Shield,
+          },
+          {
+            title: "Manage users",
+            description: "Search accounts, inspect roles, and suspend risky access.",
+            href: "/admin/users",
+            icon: Users,
+          },
+          {
+            title: "Review claims",
+            description: "Resolve seeded hotel ownership requests with clear audit actions.",
+            href: "/admin/claims",
+            icon: Building2,
+          },
+        ].map((action) => (
+          <Card key={action.href}>
+            <CardContent className="flex h-full flex-col gap-4 p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <action.icon className="h-5 w-5" />
               </div>
-              <div className="text-2xl font-bold text-slate-800">{s.value}</div>
-              <div className="text-sm text-slate-500">{s.label}</div>
+              <div className="flex-1">
+                <h2 className="font-semibold">{action.title}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{action.description}</p>
+              </div>
+              <Button asChild variant="outline" className="justify-start">
+                <Link to={action.href}>Open</Link>
+              </Button>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      <Card>
-        <CardContent className="p-6">
-          <h2 className="font-semibold text-slate-800 mb-4">Quick Actions</h2>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => window.location.href = "/admin/verifications"}>
-              <Badge variant="secondary" className="me-2">{stats?.agencies || 0}</Badge>
-              Review Pending Verifications
-            </Button>
-            <Button variant="outline" onClick={() => window.location.href = "/admin/users"}>
-              Manage Users
-            </Button>
-            <Button variant="outline" onClick={() => window.location.href = "/admin/claims"}>
-              Review Claims
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

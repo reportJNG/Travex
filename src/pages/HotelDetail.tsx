@@ -1,22 +1,39 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router";
-import { useI18n } from "@/i18n";
+import { useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import {
+  AirVent,
+  Bus,
+  Car,
+  CreditCard,
+  Facebook,
+  Globe,
+  Instagram,
+  Mail,
+  MapPin,
+  Phone,
+  Presentation,
+  Sparkles,
+  Star,
+  TreePalm,
+  UtensilsCrossed,
+  Waves,
+  Wifi,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
+import { EmptyState } from "@/components/app/StateBlock";
+import { StatusBadge } from "@/components/app/StatusBadge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
-import {
-  Star, MapPin, Phone, Mail, Globe, Facebook, Instagram,
-  Calendar, Users, CreditCard, Wifi, Waves, UtensilsCrossed, Car,
-  Sparkles, Presentation, Bus, AirVent, TreePalm
-} from "lucide-react";
 
 const AMENITY_ICON_MAP: Record<string, React.ReactNode> = {
   wifi: <Wifi className="h-4 w-4" />,
@@ -30,13 +47,24 @@ const AMENITY_ICON_MAP: Record<string, React.ReactNode> = {
   beach: <TreePalm className="h-4 w-4" />,
 };
 
+function Stars({ count }: { count?: number | null }) {
+  if (!count) return null;
+
+  return (
+    <div className="flex items-center gap-0.5 text-amber-500" aria-label={`${count} stars`}>
+      {Array.from({ length: count }).map((_, index) => (
+        <Star key={index} className="h-4 w-4 fill-current" />
+      ))}
+    </div>
+  );
+}
+
 export default function HotelDetail() {
   const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const hotelId = parseInt(id || "0");
-
   const { data: hotel, isLoading } = trpc.marketplace.getHotel.useQuery({ id: hotelId });
   const createBooking = trpc.booking.create.useMutation({
     onSuccess: (data) => {
@@ -52,9 +80,24 @@ export default function HotelDetail() {
   const [roomsCount, setRoomsCount] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"cib" | "edahabia" | "offline">("offline");
 
+  const rooms = (hotel?.rooms || []) as Array<Record<string, unknown>>;
+  const selectedRoomData = rooms.find((room) => room.id === selectedRoom);
+  const nights = checkIn && checkOut
+    ? Math.max(0, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
+    : 0;
+  const totalEstimate = selectedRoomData && nights > 0
+    ? Number(selectedRoomData.b2bRate) * nights * roomsCount
+    : 0;
+
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+
   const handleBook = () => {
-    if (!selectedRoom || !checkIn || !checkOut) {
-      toast.error("Please fill all fields");
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    if (!selectedRoom || !checkIn || !checkOut || nights <= 0) {
+      toast.error("Please choose a room and valid dates");
       return;
     }
     createBooking.mutate({
@@ -67,283 +110,241 @@ export default function HotelDetail() {
     });
   };
 
-  const nights = checkIn && checkOut
-    ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
-
-  const selectedRoomData = hotel?.rooms?.find((r: Record<string, unknown>) => r.id === selectedRoom);
-  const totalEstimate = selectedRoomData && nights > 0
-    ? Number((selectedRoomData as any).b2bRate) * nights * roomsCount
-    : 0;
-
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 space-y-4">
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-8 w-1/3" />
-        <Skeleton className="h-4 w-1/4" />
+      <div className="space-y-6">
+        <Skeleton className="h-72 w-full rounded-2xl" />
+        <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+          <Skeleton className="h-96 w-full rounded-2xl" />
+          <Skeleton className="h-96 w-full rounded-2xl" />
+        </div>
       </div>
     );
   }
 
   if (!hotel) {
     return (
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-16 text-center">
-        <h2 className="text-xl font-bold text-slate-800">Hotel not found</h2>
-      </div>
+      <EmptyState
+        icon={<MapPin className="h-6 w-6" />}
+        title="Hotel not found"
+        description="This listing may have been removed or is not available."
+        action={<Button asChild><Link to="/marketplace">Back to marketplace</Link></Button>}
+      />
     );
   }
 
-  const hphotos = (hotel.photos || []) as Array<{ storagePath: string }>;
-  const hamenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr: string } }>;
-  const hrooms = (hotel.rooms || []) as Array<Record<string, unknown>>;
+  const photos = (hotel.photos || []) as Array<{ storagePath: string }>;
+  const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr: string } }>;
   const isSeeded = hotel.isSeeded as boolean;
+  const wilaya = hotel.wilaya as { nameFr?: string } | undefined;
+  const wilayaName = wilaya?.nameFr || "Algeria";
+  const contacts: Array<{ present: unknown; href: string; icon: LucideIcon; label: string }> = [
+    { present: hotel.phone, href: `tel:${hotel.phone}`, icon: Phone, label: String(hotel.phone || "") },
+    { present: hotel.email, href: `mailto:${hotel.email}`, icon: Mail, label: String(hotel.email || "") },
+    { present: hotel.websiteUrl, href: String(hotel.websiteUrl || ""), icon: Globe, label: "Website" },
+    { present: hotel.facebookUrl, href: String(hotel.facebookUrl || ""), icon: Facebook, label: "Facebook" },
+    { present: hotel.instagramUrl, href: String(hotel.instagramUrl || ""), icon: Instagram, label: "Instagram" },
+  ];
+
+  const bookingPanel = (
+    <Card className="overflow-hidden">
+      <CardHeader>
+        <CardTitle className="text-lg">{t("booking.title")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>{t("booking.checkIn")}</Label>
+            <Input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} min={today} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>{t("booking.checkOut")}</Label>
+            <Input type="date" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} min={checkIn || today} />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>{t("booking.rooms")}</Label>
+          <Input type="number" min={1} max={20} value={roomsCount} onChange={(event) => setRoomsCount(parseInt(event.target.value) || 1)} />
+        </div>
+        <div className="space-y-2">
+          <Label>{t("booking.paymentMethod")}</Label>
+          <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "cib" | "edahabia" | "offline")} className="space-y-2">
+            {[
+              ["offline", t("payment.offline")],
+              ["cib", t("payment.cib")],
+              ["edahabia", t("payment.edahabia")],
+            ].map(([value, label]) => (
+              <Label key={value} htmlFor={value} className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10">
+                <RadioGroupItem id={value} value={value} />
+                <CreditCard className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">{label}</span>
+              </Label>
+            ))}
+          </RadioGroup>
+        </div>
+        {nights > 0 && selectedRoomData ? (
+          <div className="rounded-xl border bg-muted/40 p-3 text-sm">
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">
+                {Number(selectedRoomData.b2bRate).toLocaleString()} x {nights} nights x {roomsCount}
+              </span>
+              <span>{totalEstimate.toLocaleString()} DZD</span>
+            </div>
+            <Separator className="my-3" />
+            <div className="flex justify-between gap-3 font-semibold">
+              <span>{t("booking.total")}</span>
+              <span className="text-primary">{totalEstimate.toLocaleString()} DZD</span>
+            </div>
+          </div>
+        ) : null}
+        <Button className="w-full" disabled={!selectedRoom || !checkIn || !checkOut || createBooking.isPending} onClick={handleBook}>
+          {createBooking.isPending ? t("loading") : t("booking.submit")}
+        </Button>
+        {!user ? (
+          <p className="text-center text-xs text-muted-foreground">
+            Please <Link to="/login" className="font-medium text-primary hover:underline">login</Link> to book.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-      {/* Gallery */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6 rounded-xl overflow-hidden">
-        <div className="md:col-span-2 h-64 md:h-80 bg-slate-200">
-          {hphotos[0] ? (
-            <img src={hphotos[0].storagePath} alt="" className="w-full h-full object-cover" />
+    <div className="space-y-6 pb-20 lg:pb-0">
+      <div className="grid gap-2 overflow-hidden rounded-2xl md:grid-cols-3">
+        <div className="aspect-[16/10] bg-muted md:col-span-2 md:aspect-auto md:h-96">
+          {photos[0]?.storagePath ? (
+            <img src={photos[0].storagePath} alt={hotel.name as string} className="h-full w-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-teal-100 to-slate-200 flex items-center justify-center">
-              <MapPin className="h-16 w-16 text-slate-300" />
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-slate-200">
+              <MapPin className="h-16 w-16 text-muted-foreground" />
             </div>
           )}
         </div>
-        <div className="hidden md:grid grid-rows-2 gap-2">
-          {hphotos.slice(1, 3).map((p, i) => (
-            <div key={i} className="bg-slate-200">
-              <img src={p.storagePath} alt="" className="w-full h-full object-cover" />
+        <div className="hidden gap-2 md:grid">
+          {[photos[1]?.storagePath, photos[2]?.storagePath].map((src, index) => (
+            <div key={index} className="h-[calc(12rem-0.25rem)] bg-muted">
+              {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : null}
             </div>
           ))}
-          {hphotos.length < 2 && (
-            <>
-              <div className="bg-gradient-to-br from-slate-100 to-teal-50" />
-              <div className="bg-gradient-to-br from-teal-50 to-slate-100" />
-            </>
-          )}
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Left: Hotel Info */}
-        <div className="lg:col-span-2 space-y-6">
-          <div>
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-800">{hotel.name as string}</h1>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex">
-                    {Array.from({ length: (hotel.starRating as number) || 0 }).map((_, i) => (
-                      <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-                    ))}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0 space-y-6">
+          <Card>
+            <CardContent className="p-5 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    {isSeeded ? <StatusBadge status="awaiting_review">{t("marketplace.seeded")}</StatusBadge> : null}
+                    <Stars count={(hotel.starRating as number) || null} />
                   </div>
-                  <span className="text-sm text-slate-500 flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {(hotel.wilaya as any)?.nameFr || "Algeria"}
-                  </span>
-                </div>
-              </div>
-              {isSeeded && <Badge variant="outline">{t("marketplace.seeded")}</Badge>}
-            </div>
-            {hotel.address && (
-              <p className="text-sm text-slate-500 mt-2">{hotel.address as string}</p>
-            )}
-          </div>
-
-          {hotel.description && (
-            <p className="text-slate-600 text-sm leading-relaxed">{hotel.description as string}</p>
-          )}
-
-          {/* Amenities */}
-          <div>
-            <h2 className="font-semibold text-slate-800 mb-3">{t("hotel.amenities")}</h2>
-            <div className="flex flex-wrap gap-2">
-              {hamenities.map((ha) => (
-                <Badge key={ha.amenity.key} variant="secondary" className="gap-1.5 py-1.5 px-3">
-                  {AMENITY_ICON_MAP[ha.amenity.key] || null}
-                  {ha.amenity.labelFr}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h2 className="font-semibold text-slate-800 mb-3">{t("hotel.contact")}</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {hotel.phone && (
-                <a href={`tel:${hotel.phone}`} className="flex items-center gap-2 text-sm text-slate-600 hover:text-teal-600">
-                  <Phone className="h-4 w-4" /> {hotel.phone as string}
-                </a>
-              )}
-              {hotel.email && (
-                <a href={`mailto:${hotel.email}`} className="flex items-center gap-2 text-sm text-slate-600 hover:text-teal-600">
-                  <Mail className="h-4 w-4" /> {hotel.email as string}
-                </a>
-              )}
-              {hotel.websiteUrl && (
-                <a href={hotel.websiteUrl as string} target="_blank" rel="noopener" className="flex items-center gap-2 text-sm text-slate-600 hover:text-teal-600">
-                  <Globe className="h-4 w-4" /> Website
-                </a>
-              )}
-              {hotel.facebookUrl && (
-                <a href={hotel.facebookUrl as string} target="_blank" rel="noopener" className="flex items-center gap-2 text-sm text-slate-600 hover:text-teal-600">
-                  <Facebook className="h-4 w-4" /> Facebook
-                </a>
-              )}
-              {hotel.instagramUrl && (
-                <a href={hotel.instagramUrl as string} target="_blank" rel="noopener" className="flex items-center gap-2 text-sm text-slate-600 hover:text-teal-600">
-                  <Instagram className="h-4 w-4" /> Instagram
-                </a>
-              )}
-            </div>
-          </div>
-
-          {/* Rooms */}
-          {!isSeeded && (
-            <div>
-              <h2 className="font-semibold text-slate-800 mb-3">{t("hotel.rooms")}</h2>
-              <div className="space-y-3">
-                {hrooms.map((room: Record<string, unknown>) => (
-                  <Card
-                    key={room.id as number}
-                    className={`cursor-pointer transition-all ${
-                      selectedRoom === room.id ? "ring-2 ring-teal-500 border-teal-500" : ""
-                    }`}
-                    onClick={() => setSelectedRoom(room.id as number)}
-                  >
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-slate-800">{room.name as string}</h3>
-                        <p className="text-sm text-slate-500">
-                          Capacité: {room.totalCapacity as number} ·
-                          <span className={room.availableCount as number > 0 ? "text-green-600" : "text-red-500"}>
-                            {" "}{room.availableCount as number} dispo
-                          </span>
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-bold text-teal-700">
-                          {Number(room.b2bRate).toLocaleString()} DZD
-                        </span>
-                        <span className="text-xs text-slate-400 block">/nuit</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Booking Panel */}
-        {!isSeeded && (
-          <div>
-            <Card className="sticky top-20">
-              <CardHeader>
-                <CardTitle className="text-lg">{t("booking.title")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">{t("booking.checkIn")}</Label>
-                    <Input
-                      type="date"
-                      value={checkIn}
-                      onChange={(e) => setCheckIn(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">{t("booking.checkOut")}</Label>
-                    <Input
-                      type="date"
-                      value={checkOut}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                      min={checkIn || undefined}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t("booking.rooms")}</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={roomsCount}
-                    onChange={(e) => setRoomsCount(parseInt(e.target.value) || 1)}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{t("booking.paymentMethod")}</Label>
-                  <RadioGroup
-                    value={paymentMethod}
-                    onValueChange={(v) => setPaymentMethod(v as any)}
-                    className="space-y-2"
-                  >
-                    <div className="flex items-center space-x-2 rounded-lg border p-2">
-                      <RadioGroupItem value="offline" id="offline" />
-                      <Label htmlFor="offline" className="flex items-center gap-2 text-sm cursor-pointer">
-                        <CreditCard className="h-4 w-4 text-slate-400" />
-                        {t("payment.offline")}
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 rounded-lg border p-2">
-                      <RadioGroupItem value="cib" id="cib" />
-                      <Label htmlFor="cib" className="flex items-center gap-2 text-sm cursor-pointer">
-                        <CreditCard className="h-4 w-4 text-blue-500" />
-                        {t("payment.cib")}
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 rounded-lg border p-2">
-                      <RadioGroupItem value="edahabia" id="edahabia" />
-                      <Label htmlFor="edahabia" className="flex items-center gap-2 text-sm cursor-pointer">
-                        <CreditCard className="h-4 w-4 text-green-500" />
-                        {t("payment.edahabia")}
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-
-                {nights > 0 && selectedRoomData && (
-                  <div className="bg-slate-50 rounded-lg p-3 space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">
-                        {Number((selectedRoomData as any).b2bRate).toLocaleString()} x {nights} nuits x {roomsCount}
-                      </span>
-                      <span>{totalEstimate.toLocaleString()} DZD</span>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between font-semibold">
-                      <span>Total estimé</span>
-                      <span className="text-teal-700">{totalEstimate.toLocaleString()} DZD</span>
-                    </div>
-                  </div>
-                )}
-
-                <Button
-                  className="w-full bg-teal-600 hover:bg-teal-700"
-                  disabled={!selectedRoom || !checkIn || !checkOut || createBooking.isPending}
-                  onClick={handleBook}
-                >
-                  {createBooking.isPending ? "..." : t("booking.submit")}
-                </Button>
-
-                {!user && (
-                  <p className="text-xs text-center text-slate-500">
-                    Please <Link to="/login" className="text-teal-600 hover:underline">login</Link> to book
+                  <h1 className="break-words text-3xl font-semibold tracking-tight">{hotel.name as string}</h1>
+                  <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{hotel.address as string || wilayaName}</span>
                   </p>
+                </div>
+                <Button variant="outline" asChild>
+                  <Link to="/marketplace">Back</Link>
+                </Button>
+              </div>
+              {hotel.description ? (
+                <p className="mt-5 text-sm leading-7 text-muted-foreground">{hotel.description as string}</p>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("hotel.amenities")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {amenities.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {amenities.map((item) => (
+                    <Badge key={item.amenity.key} variant="secondary" className="gap-1.5 px-3 py-1.5">
+                      {AMENITY_ICON_MAP[item.amenity.key] || null}
+                      {item.amenity.labelFr}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No amenities listed yet.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {!isSeeded ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("hotel.rooms")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {rooms.length > 0 ? rooms.map((room) => {
+                  const available = Number(room.availableCount || 0);
+                  return (
+                    <button
+                      key={room.id as number}
+                      type="button"
+                      onClick={() => setSelectedRoom(room.id as number)}
+                      className={`w-full rounded-xl border p-4 text-left transition-colors hover:bg-accent ${selectedRoom === room.id ? "border-primary bg-primary/10" : ""}`}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h3 className="font-semibold">{room.name as string}</h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Capacity {room.totalCapacity as number} - {available} available
+                          </p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <div className="font-semibold text-primary">{Number(room.b2bRate).toLocaleString()} DZD</div>
+                          <div className="text-xs text-muted-foreground">/ night</div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                }) : (
+                  <EmptyState title="No rooms available" description="This hotel has not published room inventory yet." />
                 )}
               </CardContent>
             </Card>
-          </div>
-        )}
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("hotel.contact")}</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {contacts.map(({ present, href, icon: Icon, label }, index) => present ? (
+                <a key={index} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener" className="flex items-center gap-2 rounded-lg border p-3 text-sm hover:bg-accent">
+                  <Icon className="h-4 w-4 text-primary" />
+                  <span className="truncate">{label}</span>
+                </a>
+              ) : null)}
+            </CardContent>
+          </Card>
+        </div>
+
+        {!isSeeded ? <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">{bookingPanel}</aside> : null}
       </div>
+
+      {!isSeeded ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card p-3 shadow-lg lg:hidden">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">
+                {totalEstimate ? `${totalEstimate.toLocaleString()} DZD` : "Select a room"}
+              </div>
+              <div className="text-xs text-muted-foreground">{nights > 0 ? `${nights} nights` : "Choose dates"}</div>
+            </div>
+            <Button onClick={handleBook} disabled={!selectedRoom || !checkIn || !checkOut || createBooking.isPending}>
+              {t("booking.submit")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

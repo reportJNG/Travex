@@ -7,6 +7,22 @@ import { getDb } from "./queries/connection";
 import { users, profiles, businessDocuments } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { hashPassword, verifyPassword } from "./lib/password";
+import { signSessionToken } from "./lib/session";
+
+function setSessionCookie(ctx: { req: Request; resHeaders: Headers }, token: string) {
+  const opts = getSessionCookieOptions(ctx.req.headers);
+  ctx.resHeaders.append(
+    "set-cookie",
+    cookie.serialize(Session.cookieName, token, {
+      httpOnly: opts.httpOnly,
+      path: opts.path,
+      sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
+      secure: opts.secure,
+      maxAge: Session.maxAgeMs / 1000,
+    }),
+  );
+}
 
 export const authRouter = createRouter({
   me: authedQuery.query(async (opts) => {
@@ -33,6 +49,36 @@ export const authRouter = createRouter({
     return { success: true };
   }),
 
+  login: publicQuery
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, input.email.toLowerCase()),
+      });
+
+      if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "INVALID_CREDENTIALS",
+        });
+      }
+
+      await db
+        .update(users)
+        .set({ lastSignInAt: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+
+      const token = await signSessionToken({ userId: user.id });
+      setSessionCookie(ctx, token);
+      return { success: true };
+    }),
+
   register: publicQuery
     .input(
       z.object({
@@ -50,9 +96,10 @@ export const authRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       const db = getDb();
+      const normalizedEmail = input.email.toLowerCase();
 
       const existing = await db.query.users.findFirst({
-        where: eq(users.email, input.email),
+        where: eq(users.email, normalizedEmail),
       });
       if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "EMAIL_EXISTS" });
@@ -62,18 +109,21 @@ export const authRouter = createRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "TAX_OR_LICENSE_REQUIRED" });
       }
 
-      const result = await db.insert(users).values({
-        unionId: `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      const passwordHash = await hashPassword(input.password);
+      const [createdUser] = await db.insert(users).values({
         name: input.fullName,
-        email: input.email,
+        email: normalizedEmail,
+        passwordHash,
         role: input.role,
         status: "awaiting_review",
-      });
+      }).returning({ id: users.id });
 
-      const userId = Number(result[0].insertId);
+      if (!createdUser) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CREATE_USER_FAILED" });
+      }
 
       await db.insert(profiles).values({
-        id: userId,
+        id: createdUser.id,
         fullName: input.fullName,
         legalName: input.legalName,
         phone: input.phone,
@@ -83,7 +133,7 @@ export const authRouter = createRouter({
         preferredLocale: input.locale,
       });
 
-      return { success: true, userId };
+      return { success: true, userId: createdUser.id };
     }),
 
   updateProfile: approvedQuery

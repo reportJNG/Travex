@@ -1,52 +1,43 @@
-import { useI18n } from "@/i18n";
+import { BarChart3, BedDouble, Calendar, TrendingUp } from "lucide-react";
+import { EmptyState } from "@/components/app/StateBlock";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StatCard } from "@/components/app/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Calendar, BedDouble } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 export default function Analytics() {
   const { t } = useI18n();
-
-  // Placeholder analytics - in real app, would come from API
   const stats = [
-    { label: "Bookings this month", value: "12", change: "+20%", icon: Calendar },
-    { label: "Room nights sold", value: "48", change: "+15%", icon: BedDouble },
-    { label: "Revenue (DZD)", value: "245,000", change: "+25%", icon: TrendingUp },
-    { label: "Occupancy rate", value: "72%", change: "+8%", icon: BarChart3 },
+    { label: "Bookings this month", value: "12", helper: "+20%", icon: <Calendar className="h-5 w-5" /> },
+    { label: "Room nights sold", value: "48", helper: "+15%", icon: <BedDouble className="h-5 w-5" /> },
+    { label: "Revenue", value: "245K DZD", helper: "+25%", icon: <TrendingUp className="h-5 w-5" />, tone: "green" as const },
+    { label: "Occupancy rate", value: "72%", helper: "+8%", icon: <BarChart3 className="h-5 w-5" />, tone: "amber" as const },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">{t("nav.analytics")}</h1>
+    <div>
+      <PageHeader
+        eyebrow="Performance"
+        title={t("nav.analytics")}
+        description="A clean overview of booking volume, room nights, revenue, and occupancy signals."
+      />
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((s) => (
-          <Card key={s.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <s.icon className="h-8 w-8 text-teal-600" />
-                <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                  {s.change}
-                </span>
-              </div>
-              <div className="mt-3">
-                <div className="text-2xl font-bold text-slate-800">{s.value}</div>
-                <div className="text-sm text-slate-500">{s.label}</div>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map((stat) => (
+          <StatCard key={stat.label} {...stat} />
         ))}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Performance</CardTitle>
+          <CardTitle>Monthly performance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64 bg-slate-50 rounded-lg flex items-center justify-center">
-            <div className="text-center text-slate-400">
-              <BarChart3 className="h-12 w-12 mx-auto mb-3 text-slate-300" />
-              <p>Charts will appear here with real data</p>
-            </div>
-          </div>
+          <EmptyState
+            icon={<BarChart3 className="h-6 w-6" />}
+            title="Charts coming with live data"
+            description="The layout is ready for the analytics endpoint once real booking aggregates are connected."
+          />
         </CardContent>
       </Card>
     </div>

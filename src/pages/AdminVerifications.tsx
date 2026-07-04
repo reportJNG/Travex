@@ -1,110 +1,93 @@
+import { CheckCircle, Clock, FileText, Mail, User, XCircle } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
+import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StatusBadge } from "@/components/app/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Mail, User, FileText } from "lucide-react";
 
 export default function AdminVerifications() {
   const { t } = useI18n();
   const utils = trpc.useUtils();
   const { data: users, isLoading } = trpc.admin.listUsers.useQuery({ status: "awaiting_review" });
+  const [reasons, setReasons] = useState<Record<number, string>>({});
 
   const reviewMutation = trpc.admin.reviewAccount.useMutation({
-    onSuccess: () => { toast.success("Account reviewed"); utils.admin.listUsers.invalidate(); },
+    onSuccess: () => {
+      toast.success("Account reviewed");
+      utils.admin.listUsers.invalidate();
+    },
     onError: (err) => toast.error(err.message),
   });
 
-  const [reasons, setReasons] = useState<Record<number, string>>({});
-
-  if (isLoading) return <div className="p-8 text-center">Loading...</div>;
-
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-      <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-        <Clock className="h-6 w-6" />
-        {t("admin.pendingVerifications")}
-        {users && users.length > 0 && (
-          <Badge variant="secondary" className="ms-2">{users.length}</Badge>
-        )}
-      </h1>
+    <div>
+      <PageHeader
+        eyebrow="Administration"
+        title={t("admin.pendingVerifications")}
+        description="Approve complete business profiles and capture a clear reason when rejecting an account."
+      />
 
-      {users && users.length > 0 ? (
+      {isLoading ? (
+        <LoadingCards count={4} />
+      ) : users && users.length > 0 ? (
         <div className="space-y-4">
-          {users.map((u: Record<string, unknown>) => {
-            const profile = u.profile as Record<string, unknown> | undefined;
+          {users.map((user: Record<string, unknown>) => {
+            const profile = user.profile as Record<string, unknown> | undefined;
+            const userId = user.id as number;
+            const taxId = typeof profile?.taxId === "string" ? profile.taxId : "";
+            const licenseNumber = typeof profile?.licenseNumber === "string" ? profile.licenseNumber : "";
             return (
-              <Card key={u.id as number}>
-                <CardContent className="p-4">
-                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-slate-800">{(u.name as string) || "Unknown"}</h3>
-                        <Badge variant="outline" className="capitalize">{(u.role as string) || "unknown"}</Badge>
-                        <Badge className="bg-yellow-100 text-yellow-700">{t("status.awaiting_review")}</Badge>
+              <Card key={userId}>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="truncate text-lg font-semibold">{(user.name as string) || "Unknown"}</h3>
+                        <span className="rounded-md border px-2 py-1 text-xs capitalize">{(user.role as string) || "unknown"}</span>
+                        <StatusBadge status="awaiting_review">{t("status.awaiting_review")}</StatusBadge>
                       </div>
-                      <div className="grid sm:grid-cols-2 gap-2 text-sm text-slate-600">
-                        <span className="flex items-center gap-1.5">
-                          <Mail className="h-3.5 w-3.5 text-slate-400" />
-                          {(u.email as string) || "No email"}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5 text-slate-400" />
-                          {(profile?.legalName as string) || "No legal name"}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <FileText className="h-3.5 w-3.5 text-slate-400" />
-                          {(profile?.phone as string) || "No phone"}
-                        </span>
-                        <span className="flex items-center gap-1.5">
-                          <FileText className="h-3.5 w-3.5 text-slate-400" />
-                          Wilaya: {(profile?.wilayaCode as number) || "-"}
-                        </span>
-                        {profile?.taxId && (
-                          <span className="flex items-center gap-1.5">
-                            <FileText className="h-3.5 w-3.5 text-slate-400" />
-                            Tax ID: {profile.taxId as string}
-                          </span>
-                        )}
-                        {profile?.licenseNumber && (
-                          <span className="flex items-center gap-1.5">
-                            <FileText className="h-3.5 w-3.5 text-slate-400" />
-                            License: {profile.licenseNumber as string}
-                          </span>
-                        )}
+                      <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                        <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{(user.email as string) || "No email"}</span>
+                        <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{(profile?.legalName as string) || "No legal name"}</span>
+                        <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />{(profile?.phone as string) || "No phone"}</span>
+                        <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Wilaya: {(profile?.wilayaCode as number) || "-"}</span>
+                        {taxId ? <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Tax ID: {taxId}</span> : null}
+                        {licenseNumber ? <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />License: {licenseNumber}</span> : null}
                       </div>
                       <Input
                         placeholder="Rejection reason (required if rejecting)"
-                        className="text-sm mt-2"
-                        value={reasons[u.id as number] || ""}
-                        onChange={(e) => setReasons({ ...reasons, [u.id as number]: e.target.value })}
+                        value={reasons[userId] || ""}
+                        onChange={(event) => setReasons({ ...reasons, [userId]: event.target.value })}
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
                       <Button
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => reviewMutation.mutate({ userId: u.id as number, approve: true })}
+                        onClick={() => reviewMutation.mutate({ userId, approve: true })}
                         disabled={reviewMutation.isPending}
                       >
-                        <CheckCircle className="h-4 w-4 me-1" />
+                        <CheckCircle className="me-1 h-4 w-4" />
                         {t("admin.approve")}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="text-red-600 border-red-200 hover:bg-red-50"
                         onClick={() => {
-                          const reason = reasons[u.id as number];
-                          if (!reason) { toast.error("Reason is required"); return; }
-                          reviewMutation.mutate({ userId: u.id as number, approve: false, reason });
+                          const reason = reasons[userId]?.trim();
+                          if (!reason) {
+                            toast.error("Reason is required");
+                            return;
+                          }
+                          reviewMutation.mutate({ userId, approve: false, reason });
                         }}
                         disabled={reviewMutation.isPending}
                       >
-                        <XCircle className="h-4 w-4 me-1" />
+                        <XCircle className="me-1 h-4 w-4" />
                         {t("admin.reject")}
                       </Button>
                     </div>
@@ -115,10 +98,11 @@ export default function AdminVerifications() {
           })}
         </div>
       ) : (
-        <div className="text-center py-16 text-slate-400">
-          <CheckCircle className="h-12 w-12 mx-auto mb-3 text-green-300" />
-          <p>All caught up! No pending verifications.</p>
-        </div>
+        <EmptyState
+          icon={<Clock className="h-6 w-6" />}
+          title="All caught up"
+          description="There are no pending account verifications right now."
+        />
       )}
     </div>
   );

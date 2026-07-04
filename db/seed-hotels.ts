@@ -160,7 +160,7 @@ async function seedHotels() {
       continue;
     }
 
-    const result = await db.insert(hotels).values({
+    const [createdHotel] = await db.insert(hotels).values({
       isSeeded: false,
       isActive: true,
       name: h.name,
@@ -173,9 +173,12 @@ async function seedHotels() {
       websiteUrl: h.websiteUrl,
       lat: h.lat,
       lng: h.lng,
-    });
+    }).returning({ id: hotels.id });
 
-    const hotelId = Number(result[0].insertId);
+    if (!createdHotel) {
+      throw new Error(`Failed to create hotel: ${h.name}`);
+    }
+    const hotelId = createdHotel.id;
 
     // Add amenities
     for (const aid of h.amenities) {

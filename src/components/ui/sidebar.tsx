@@ -599,6 +599,8 @@ function SidebarMenuBadge({
   )
 }
 
+const SIDEBAR_SKELETON_WIDTHS = ["52%", "68%", "84%", "60%", "76%"] as const
+
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
@@ -606,10 +608,11 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean
 }) {
-  // Random width between 50 to 90%.
+  const id = React.useId()
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  }, [])
+    const index = [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0)
+    return SIDEBAR_SKELETON_WIDTHS[index % SIDEBAR_SKELETON_WIDTHS.length]
+  }, [id])
 
   return (
     <div

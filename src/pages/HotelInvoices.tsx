@@ -1,22 +1,27 @@
-import { useI18n } from "@/i18n";
+import { AlertCircle, Receipt } from "lucide-react";
+import { EmptyState } from "@/components/app/StateBlock";
+import { PageHeader } from "@/components/app/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Receipt, AlertCircle } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 export default function HotelInvoices() {
   const { t } = useI18n();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">{t("invoices.title")}</h1>
+    <div>
+      <PageHeader
+        eyebrow="Billing"
+        title={t("invoices.title")}
+        description="Review monthly commission invoices and payment instructions for your hotel account."
+      />
 
-      <Card className="mb-6 bg-teal-50 border-teal-200">
-        <CardContent className="p-4 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-teal-600 flex-shrink-0 mt-0.5" />
+      <Card className="mb-6 border-primary/20 bg-primary/5">
+        <CardContent className="flex items-start gap-3 p-4">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
           <div>
-            <h3 className="font-medium text-teal-800">Commission: 5%</h3>
-            <p className="text-sm text-teal-600 mt-1">
-              {t("invoices.payInfo")}. Les factures sont générées automatiquement chaque mois.
+            <h3 className="font-medium text-foreground">Commission: 5%</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("invoices.payInfo")}. Invoices are generated automatically each month.
             </p>
           </div>
         </CardContent>
@@ -26,15 +31,15 @@ export default function HotelInvoices() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
-            Historique des factures
+            Invoice history
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-slate-400">
-            <Receipt className="h-10 w-10 mx-auto mb-3 text-slate-300" />
-            <p>Aucune facture pour le moment</p>
-            <p className="text-sm mt-1">Les factures apparaîtront après confirmation des réservations</p>
-          </div>
+          <EmptyState
+            icon={<Receipt className="h-6 w-6" />}
+            title="No invoices yet"
+            description="Invoices will appear after reservations are confirmed."
+          />
         </CardContent>
       </Card>
     </div>

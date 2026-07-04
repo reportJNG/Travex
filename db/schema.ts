@@ -1,20 +1,19 @@
 import {
-  mysqlTable,
-  mysqlEnum,
+  pgTable,
+  pgEnum,
   serial,
   varchar,
   text,
   timestamp,
-  int,
-  bigint,
-  decimal,
+  integer,
+  numeric,
   boolean,
-  json,
+  jsonb,
   date,
   uniqueIndex,
   index,
   primaryKey,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 
 // ── Enums ───────────────────────────────────────────────────────────
 export const userRoleEnum = ["agency", "hotel", "super_admin"] as const;
@@ -29,61 +28,70 @@ export const paymentStatusEnum = ["initiated", "paid", "failed", "refund_require
 export const invoiceStatusEnum = ["unpaid", "paid", "overdue"] as const;
 export const claimStatusEnum = ["pending", "approved", "rejected"] as const;
 
-// ── Users (OAuth-linked) ────────────────────────────────────────────
-export const users = mysqlTable("users", {
+export const userRole = pgEnum("user_role", userRoleEnum);
+export const accountStatus = pgEnum("account_status", accountStatusEnum);
+export const docType = pgEnum("doc_type", docTypeEnum);
+export const bookingStatus = pgEnum("booking_status", bookingStatusEnum);
+export const paymentMethod = pgEnum("payment_method", paymentMethodEnum);
+export const paymentStatus = pgEnum("payment_status", paymentStatusEnum);
+export const invoiceStatus = pgEnum("invoice_status", invoiceStatusEnum);
+export const claimStatus = pgEnum("claim_status", claimStatusEnum);
+
+// ── Users  ────────────────────────────────────────────
+export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  unionId: varchar("unionId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
-  email: varchar("email", { length: 320 }),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
   avatar: text("avatar"),
-  role: mysqlEnum("role", userRoleEnum).default("agency").notNull(),
-  status: mysqlEnum("status", accountStatusEnum).default("awaiting_review").notNull(),
+  role: userRole("role").default("agency").notNull(),
+  status: accountStatus("status").default("awaiting_review").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
   lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull(),
 });
 
 // ── Profiles (extended user data) ──────────────────────────────────
-export const profiles = mysqlTable("profiles", {
-  id: bigint("id", { mode: "number", unsigned: true }).primaryKey()
+export const profiles = pgTable("profiles", {
+  id: integer("id").primaryKey()
     .references(() => users.id, { onDelete: "cascade" }),
   fullName: varchar("full_name", { length: 255 }).notNull(),
   legalName: varchar("legal_name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
-  wilayaCode: int("wilaya_code"),
+  wilayaCode: integer("wilaya_code"),
   taxId: varchar("tax_id", { length: 100 }),
   licenseNumber: varchar("license_number", { length: 100 }),
   preferredLocale: varchar("preferred_locale", { length: 2 }).default("fr").notNull(),
   rejectionReason: text("rejection_reason"),
-  reviewedBy: bigint("reviewed_by", { mode: "number", unsigned: true }),
+  reviewedBy: integer("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 
 // ── Business Documents ─────────────────────────────────────────────
-export const businessDocuments = mysqlTable("business_documents", {
+export const businessDocuments = pgTable("business_documents", {
   id: serial("id").primaryKey(),
-  profileId: bigint("profile_id", { mode: "number", unsigned: true }).notNull()
+  profileId: integer("profile_id").notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),
-  type: mysqlEnum("type", docTypeEnum).notNull(),
+  type: docType("type").notNull(),
   storagePath: text("storage_path").notNull(),
   originalName: varchar("original_name", { length: 255 }).notNull(),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
 // ── Wilayas (Algerian provinces) ───────────────────────────────────
-export const wilayas = mysqlTable("wilayas", {
-  code: int("code").primaryKey(),
+export const wilayas = pgTable("wilayas", {
+  code: integer("code").primaryKey(),
   nameFr: varchar("name_fr", { length: 100 }).notNull(),
   nameAr: varchar("name_ar", { length: 100 }).notNull(),
   nameEn: varchar("name_en", { length: 100 }).notNull(),
-  lat: decimal("lat", { precision: 10, scale: 6 }),
-  lng: decimal("lng", { precision: 10, scale: 6 }),
+  lat: numeric("lat", { precision: 10, scale: 6 }),
+  lng: numeric("lng", { precision: 10, scale: 6 }),
 });
 
 // ── Amenities ──────────────────────────────────────────────────────
-export const amenities = mysqlTable("amenities", {
+export const amenities = pgTable("amenities", {
   id: serial("id").primaryKey(),
   key: varchar("key", { length: 50 }).notNull().unique(),
   lucideIcon: varchar("lucide_icon", { length: 50 }).notNull(),
@@ -93,22 +101,22 @@ export const amenities = mysqlTable("amenities", {
 });
 
 // ── Platform Settings ──────────────────────────────────────────────
-export const platformSettings = mysqlTable("platform_settings", {
+export const platformSettings = pgTable("platform_settings", {
   key: varchar("key", { length: 100 }).primaryKey(),
   value: varchar("value", { length: 255 }).notNull(),
 });
 
 // ── Hotels ─────────────────────────────────────────────────────────
-export const hotels = mysqlTable("hotels", {
+export const hotels = pgTable("hotels", {
   id: serial("id").primaryKey(),
-  ownerProfileId: bigint("owner_profile_id", { mode: "number", unsigned: true }),
+  ownerProfileId: integer("owner_profile_id"),
   isSeeded: boolean("is_seeded").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  wilayaCode: int("wilaya_code").notNull(),
+  wilayaCode: integer("wilaya_code").notNull(),
   address: text("address"),
-  starRating: int("star_rating"),
+  starRating: integer("star_rating"),
   phone: varchar("phone", { length: 50 }),
   email: varchar("email", { length: 320 }),
   websiteUrl: text("website_url"),
@@ -116,10 +124,10 @@ export const hotels = mysqlTable("hotels", {
   instagramUrl: text("instagram_url"),
   googleMapsUrl: text("google_maps_url"),
   googlePlaceId: varchar("google_place_id", { length: 255 }).unique(),
-  lat: decimal("lat", { precision: 10, scale: 6 }),
-  lng: decimal("lng", { precision: 10, scale: 6 }),
-  offlinePaymentWindowHours: int("offline_payment_window_hours").default(48).notNull(),
-  replacedSeededId: bigint("replaced_seeded_id", { mode: "number", unsigned: true }),
+  lat: numeric("lat", { precision: 10, scale: 6 }),
+  lng: numeric("lng", { precision: 10, scale: 6 }),
+  offlinePaymentWindowHours: integer("offline_payment_window_hours").default(48).notNull(),
+  replacedSeededId: integer("replaced_seeded_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
 }, (table) => [
@@ -127,33 +135,33 @@ export const hotels = mysqlTable("hotels", {
 ]);
 
 // ── Hotel Photos ───────────────────────────────────────────────────
-export const hotelPhotos = mysqlTable("hotel_photos", {
+export const hotelPhotos = pgTable("hotel_photos", {
   id: serial("id").primaryKey(),
-  hotelId: bigint("hotel_id", { mode: "number", unsigned: true }).notNull()
+  hotelId: integer("hotel_id").notNull()
     .references(() => hotels.id, { onDelete: "cascade" }),
   storagePath: text("storage_path").notNull(),
-  sortOrder: int("sort_order").default(0).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
 });
 
 // ── Hotel Amenities (junction) ─────────────────────────────────────
-export const hotelAmenities = mysqlTable("hotel_amenities", {
-  hotelId: bigint("hotel_id", { mode: "number", unsigned: true }).notNull()
+export const hotelAmenities = pgTable("hotel_amenities", {
+  hotelId: integer("hotel_id").notNull()
     .references(() => hotels.id, { onDelete: "cascade" }),
-  amenityId: bigint("amenity_id", { mode: "number", unsigned: true }).notNull()
+  amenityId: integer("amenity_id").notNull()
     .references(() => amenities.id, { onDelete: "cascade" }),
 }, (table) => [
   primaryKey({ columns: [table.hotelId, table.amenityId] }),
 ]);
 
 // ── Room Types ─────────────────────────────────────────────────────
-export const roomTypes = mysqlTable("room_types", {
+export const roomTypes = pgTable("room_types", {
   id: serial("id").primaryKey(),
-  hotelId: bigint("hotel_id", { mode: "number", unsigned: true }).notNull()
+  hotelId: integer("hotel_id").notNull()
     .references(() => hotels.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 100 }).notNull(),
-  totalCapacity: int("total_capacity").notNull(),
-  availableCount: int("available_count").notNull(),
-  b2bRate: decimal("b2b_rate", { precision: 12, scale: 2 }).notNull(),
+  totalCapacity: integer("total_capacity").notNull(),
+  availableCount: integer("available_count").notNull(),
+  b2bRate: numeric("b2b_rate", { precision: 12, scale: 2 }).notNull(),
   thumbnailPath: text("thumbnail_path"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -161,26 +169,26 @@ export const roomTypes = mysqlTable("room_types", {
 });
 
 // ── Bookings ───────────────────────────────────────────────────────
-export const bookings = mysqlTable("bookings", {
+export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   reference: varchar("reference", { length: 50 }).notNull(),
-  agencyId: bigint("agency_id", { mode: "number", unsigned: true }).notNull()
+  agencyId: integer("agency_id").notNull()
     .references(() => profiles.id),
-  hotelId: bigint("hotel_id", { mode: "number", unsigned: true }).notNull()
+  hotelId: integer("hotel_id").notNull()
     .references(() => hotels.id),
-  roomTypeId: bigint("room_type_id", { mode: "number", unsigned: true }).notNull()
+  roomTypeId: integer("room_type_id").notNull()
     .references(() => roomTypes.id),
   roomNameSnapshot: varchar("room_name_snapshot", { length: 100 }).notNull(),
-  nightlyRateSnapshot: decimal("nightly_rate_snapshot", { precision: 12, scale: 2 }).notNull(),
-  roomsCount: int("rooms_count").notNull(),
+  nightlyRateSnapshot: numeric("nightly_rate_snapshot", { precision: 12, scale: 2 }).notNull(),
+  roomsCount: integer("rooms_count").notNull(),
   checkIn: date("check_in").notNull(),
   checkOut: date("check_out").notNull(),
-  nights: int("nights").notNull(),
-  totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
-  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull(),
-  commissionAmount: decimal("commission_amount", { precision: 12, scale: 2 }),
-  paymentMethod: mysqlEnum("payment_method", paymentMethodEnum).notNull(),
-  status: mysqlEnum("status", bookingStatusEnum).notNull(),
+  nights: integer("nights").notNull(),
+  totalPrice: numeric("total_price", { precision: 12, scale: 2 }).notNull(),
+  commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).notNull(),
+  commissionAmount: numeric("commission_amount", { precision: 12, scale: 2 }),
+  paymentMethod: paymentMethod("payment_method").notNull(),
+  status: bookingStatus("status").notNull(),
   rejectionReason: text("rejection_reason"),
   hotelDeadline: timestamp("hotel_deadline"),
   paymentDeadline: timestamp("payment_deadline"),
@@ -188,7 +196,7 @@ export const bookings = mysqlTable("bookings", {
   receivedConfirmedAt: timestamp("received_confirmed_at"),
   voucherPath: text("voucher_path"),
   archivedByAgency: boolean("archived_by_agency").default(false).notNull(),
-  invoiceId: bigint("invoice_id", { mode: "number", unsigned: true })
+  invoiceId: integer("invoice_id")
     .references(() => invoices.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull().$onUpdate(() => new Date()),
@@ -201,30 +209,30 @@ export const bookings = mysqlTable("bookings", {
 ]);
 
 // ── Payments ───────────────────────────────────────────────────────
-export const payments = mysqlTable("payments", {
+export const payments = pgTable("payments", {
   id: serial("id").primaryKey(),
-  bookingId: bigint("booking_id", { mode: "number", unsigned: true }).notNull()
+  bookingId: integer("booking_id").notNull()
     .references(() => bookings.id, { onDelete: "cascade" }),
   provider: varchar("provider", { length: 50 }).default("chargily").notNull(),
-  method: mysqlEnum("method", paymentMethodEnum).notNull(),
+  method: paymentMethod("method").notNull(),
   checkoutId: varchar("checkout_id", { length: 255 }).unique(),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  status: mysqlEnum("status", paymentStatusEnum).default("initiated").notNull(),
-  raw: json("raw"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  status: paymentStatus("status").default("initiated").notNull(),
+  raw: jsonb("raw"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ── Invoices ───────────────────────────────────────────────────────
-export const invoices = mysqlTable("invoices", {
+export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
-  hotelId: bigint("hotel_id", { mode: "number", unsigned: true }).notNull()
+  hotelId: integer("hotel_id").notNull()
     .references(() => hotels.id),
-  periodYear: int("period_year").notNull(),
-  periodMonth: int("period_month").notNull(),
-  bookingsTotal: decimal("bookings_total", { precision: 14, scale: 2 }).notNull(),
-  commissionDue: decimal("commission_due", { precision: 14, scale: 2 }).notNull(),
-  status: mysqlEnum("status", invoiceStatusEnum).default("unpaid").notNull(),
+  periodYear: integer("period_year").notNull(),
+  periodMonth: integer("period_month").notNull(),
+  bookingsTotal: numeric("bookings_total", { precision: 14, scale: 2 }).notNull(),
+  commissionDue: numeric("commission_due", { precision: 14, scale: 2 }).notNull(),
+  status: invoiceStatus("status").default("unpaid").notNull(),
   pdfPath: text("pdf_path"),
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
   dueDate: date("due_date").notNull(),
@@ -235,26 +243,26 @@ export const invoices = mysqlTable("invoices", {
 ]);
 
 // ── Invoice Items ──────────────────────────────────────────────────
-export const invoiceItems = mysqlTable("invoice_items", {
-  invoiceId: bigint("invoice_id", { mode: "number", unsigned: true }).notNull()
+export const invoiceItems = pgTable("invoice_items", {
+  invoiceId: integer("invoice_id").notNull()
     .references(() => invoices.id, { onDelete: "cascade" }),
-  bookingId: bigint("booking_id", { mode: "number", unsigned: true }).notNull()
+  bookingId: integer("booking_id").notNull()
     .references(() => bookings.id),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  commission: decimal("commission", { precision: 12, scale: 2 }).notNull(),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  commission: numeric("commission", { precision: 12, scale: 2 }).notNull(),
 }, (table) => [
   primaryKey({ columns: [table.invoiceId, table.bookingId] }),
 ]);
 
 // ── Hotel Claims ───────────────────────────────────────────────────
-export const hotelClaims = mysqlTable("hotel_claims", {
+export const hotelClaims = pgTable("hotel_claims", {
   id: serial("id").primaryKey(),
-  claimantProfileId: bigint("claimant_profile_id", { mode: "number", unsigned: true }).notNull()
+  claimantProfileId: integer("claimant_profile_id").notNull()
     .references(() => profiles.id),
-  seededHotelId: bigint("seeded_hotel_id", { mode: "number", unsigned: true }).notNull()
+  seededHotelId: integer("seeded_hotel_id").notNull()
     .references(() => hotels.id),
-  status: mysqlEnum("status", claimStatusEnum).default("pending").notNull(),
-  decidedBy: bigint("decided_by", { mode: "number", unsigned: true })
+  status: claimStatus("status").default("pending").notNull(),
+  decidedBy: integer("decided_by")
     .references(() => profiles.id),
   decidedAt: timestamp("decided_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -263,12 +271,12 @@ export const hotelClaims = mysqlTable("hotel_claims", {
 ]);
 
 // ── Notifications ──────────────────────────────────────────────────
-export const notifications = mysqlTable("notifications", {
+export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
-  userId: bigint("user_id", { mode: "number", unsigned: true }).notNull()
+  userId: integer("user_id").notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),
   type: varchar("type", { length: 50 }).notNull(),
-  data: json("data").notNull(),
+  data: jsonb("data").notNull(),
   readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
@@ -276,14 +284,14 @@ export const notifications = mysqlTable("notifications", {
 ]);
 
 // ── Audit Logs ─────────────────────────────────────────────────────
-export const auditLogs = mysqlTable("audit_logs", {
+export const auditLogs = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
-  actorId: bigint("actor_id", { mode: "number", unsigned: true })
+  actorId: integer("actor_id")
     .references(() => profiles.id),
   action: varchar("action", { length: 100 }).notNull(),
   targetType: varchar("target_type", { length: 50 }),
   targetId: varchar("target_id", { length: 100 }),
-  meta: json("meta"),
+  meta: jsonb("meta"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

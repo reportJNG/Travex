@@ -1,134 +1,137 @@
 import { useState } from "react";
-import { useI18n } from "@/i18n";
-import { useAuth } from "@/hooks/useAuth";
-import { trpc } from "@/providers/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Globe, Mail, Phone, Save, UserCircle } from "lucide-react";
+import { toast } from "sonner";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { UserCircle, Mail, Phone, Globe, Save } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { useI18n } from "@/i18n";
+import { trpc } from "@/providers/trpc";
 
 export default function Profile() {
-  const { t } = useI18n();
+  const { t, locale: currentLocale } = useI18n();
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const { data: userData } = trpc.auth.me.useQuery();
-
-  const updateMutation = trpc.auth.updateProfile.useMutation({
-    onSuccess: () => { toast.success("Profile updated"); utils.auth.me.invalidate(); },
-    onError: (err) => toast.error(err.message),
-  });
+  const profile = (userData as any)?.profile;
 
   const [fullName, setFullName] = useState((user as any)?.name || "");
   const [phone, setPhone] = useState("");
-  const [locale, setLocale] = useState("fr");
+  const [locale, setLocale] = useState<"fr" | "ar" | "en">(currentLocale);
+
+  const updateMutation = trpc.auth.updateProfile.useMutation({
+    onSuccess: () => {
+      toast.success("Profile updated");
+      utils.auth.me.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const handleSave = () => {
     updateMutation.mutate({
       ...(fullName && { fullName }),
       ...(phone && { phone }),
-      ...(locale && { preferredLocale: locale as "fr" | "ar" | "en" }),
+      ...(locale && { preferredLocale: locale }),
     });
   };
 
-  const profile = (userData as any)?.profile;
-
   return (
-    <div className="max-w-2xl mx-auto px-4 lg:px-6 py-6">
-      <h1 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-        <UserCircle className="h-6 w-6" />
-        {t("nav.profile")}
-      </h1>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        eyebrow="Account"
+        title={t("nav.profile")}
+        description="Keep your identity, contact information, and preferred language up to date."
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
+          <CardTitle>Profile information</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <UserCircle className="h-4 w-4 text-slate-400" />
-              Full Name
-            </Label>
-            <Input
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder={profile?.fullName || (user as any)?.name || ""}
-            />
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <UserCircle className="h-4 w-4 text-muted-foreground" />
+                Full name
+              </Label>
+              <Input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder={profile?.fullName || (user as any)?.name || ""} />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Mail className="h-4 w-4 text-muted-foreground" />
+                Email
+              </Label>
+              <Input value={(user as any)?.email || ""} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Phone className="h-4 w-4 text-muted-foreground" />
+                Phone
+              </Label>
+              <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={profile?.phone || "+213555123456"} />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                Preferred language
+              </Label>
+              <Select value={locale} onValueChange={(value) => setLocale(value as typeof locale)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fr">Francais</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="ar">Arabic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Mail className="h-4 w-4 text-slate-400" />
-              Email
-            </Label>
-            <Input value={(user as any)?.email || ""} disabled className="bg-slate-50" />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Phone className="h-4 w-4 text-slate-400" />
-              Phone
-            </Label>
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={profile?.phone || "+213555123456"}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Globe className="h-4 w-4 text-slate-400" />
-              Preferred Language
-            </Label>
-            <select
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-              value={locale}
-              onChange={(e) => setLocale(e.target.value)}
-            >
-              <option value="fr">Français</option>
-              <option value="en">English</option>
-              <option value="ar">العربية</option>
-            </select>
-          </div>
-
-          {profile?.legalName && (
-            <div className="pt-4 border-t border-slate-100">
-              <h3 className="text-sm font-medium text-slate-500 mb-2">Legal Information</h3>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+          {profile?.legalName ? (
+            <div className="rounded-lg border bg-muted/40 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold">Legal information</h3>
+                <StatusBadge status={(user as any)?.status || "approved"}>{t(`status.${(user as any)?.status || "approved"}`)}</StatusBadge>
+              </div>
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <div>
-                  <span className="text-slate-400">Legal Name</span>
-                  <p className="font-medium text-slate-700">{profile.legalName}</p>
+                  <span className="text-muted-foreground">Legal name</span>
+                  <p className="font-medium">{profile.legalName}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400">Role</span>
-                  <p className="font-medium text-slate-700 capitalize">{(user as any)?.role}</p>
+                  <span className="text-muted-foreground">Role</span>
+                  <p className="font-medium capitalize">{(user as any)?.role?.replace("_", " ")}</p>
                 </div>
-                {profile?.taxId && (
+                {profile?.taxId ? (
                   <div>
-                    <span className="text-slate-400">Tax ID</span>
-                    <p className="font-medium text-slate-700">{profile.taxId}</p>
+                    <span className="text-muted-foreground">Tax ID</span>
+                    <p className="font-medium">{profile.taxId}</p>
                   </div>
-                )}
-                {profile?.licenseNumber && (
+                ) : null}
+                {profile?.licenseNumber ? (
                   <div>
-                    <span className="text-slate-400">License</span>
-                    <p className="font-medium text-slate-700">{profile.licenseNumber}</p>
+                    <span className="text-muted-foreground">License</span>
+                    <p className="font-medium">{profile.licenseNumber}</p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
-          )}
+          ) : null}
 
-          <Button
-            className="w-full bg-teal-600 hover:bg-teal-700"
-            onClick={handleSave}
-            disabled={updateMutation.isPending}
-          >
-            <Save className="h-4 w-4 me-2" />
-            {updateMutation.isPending ? "Saving..." : "Save Changes"}
+          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={updateMutation.isPending}>
+            <Save className="me-2 h-4 w-4" />
+            {updateMutation.isPending ? "Saving..." : "Save changes"}
           </Button>
         </CardContent>
       </Card>

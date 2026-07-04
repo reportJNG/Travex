@@ -20,6 +20,9 @@ import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Clock, ShieldAlert, XCircle } from "lucide-react";
 
 function RoleGuard({
   children,
@@ -192,49 +195,48 @@ export default function App() {
 }
 
 function PendingPage() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
-      <div className="h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center mb-4">
-        <svg className="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">Account Under Review</h1>
-      <p className="text-slate-500 max-w-md">
-        Your account is currently being reviewed by our team. This usually takes 24 hours. You will receive a notification once your account is approved.
-      </p>
-    </div>
-  );
+  return <AccountState icon={<Clock className="h-8 w-8" />} tone="amber" title="Account under review" description="Your account is currently being reviewed by our team. This usually takes 24 hours. You will receive a notification once your account is approved." />;
 }
 
 function RejectedPage() {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
-      <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center mb-4">
-        <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">Account Rejected</h1>
-      <p className="text-slate-500 max-w-md">
-        Unfortunately, your account verification was rejected. Please contact our support team for more information.
-      </p>
-    </div>
-  );
+  return <AccountState icon={<XCircle className="h-8 w-8" />} tone="rose" title="Account rejected" description="Your account verification was rejected. Please contact support for more information and next steps." />;
 }
 
 function SuspendedPage() {
+  return <AccountState icon={<ShieldAlert className="h-8 w-8" />} tone="orange" title="Account suspended" description="Your account has been suspended. Please contact support to resolve this issue." />;
+}
+
+function AccountState({
+  icon,
+  title,
+  description,
+  tone,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  tone: "amber" | "rose" | "orange";
+}) {
+  const toneClass = {
+    amber: "bg-amber-100 text-amber-700",
+    rose: "bg-rose-100 text-rose-700",
+    orange: "bg-orange-100 text-orange-700",
+  }[tone];
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
-      <div className="h-16 w-16 rounded-full bg-orange-100 flex items-center justify-center mb-4">
-        <svg className="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-        </svg>
-      </div>
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">Account Suspended</h1>
-      <p className="text-slate-500 max-w-md">
-        Your account has been suspended. Please contact our support team to resolve this issue.
-      </p>
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <Card className="w-full max-w-lg text-center">
+        <CardContent className="px-6 py-10">
+          <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ${toneClass}`}>
+            {icon}
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
+          <Button className="mt-6" asChild>
+            <a href="/">Back to home</a>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,32 +1,28 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { Archive, BadgeCheck, CalendarCheck, Clock, CreditCard, Receipt } from "lucide-react";
+import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/app/StateBlock";
+import { PageHeader } from "@/components/app/PageHeader";
+import { StatCard } from "@/components/app/StatCard";
+import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "sonner";
 import {
-  CalendarCheck, Clock, BadgeCheck, Receipt, Archive,
-  Eye, Download, CreditCard
-} from "lucide-react";
-
-const STATUS_COLORS: Record<string, string> = {
-  pending_hotel: "bg-yellow-100 text-yellow-700",
-  awaiting_offline_payment: "bg-blue-100 text-blue-700",
-  confirmed: "bg-green-100 text-green-700",
-  completed: "bg-slate-100 text-slate-700",
-  rejected: "bg-red-100 text-red-700",
-  expired: "bg-orange-100 text-orange-700",
-  cancelled: "bg-gray-100 text-gray-700",
-  pending_payment: "bg-purple-100 text-purple-700",
-};
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function Dashboard() {
   const { t } = useI18n();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-
   const { data: bookings, isLoading, refetch } = trpc.booking.myBookings.useQuery();
   const archiveMutation = trpc.booking.archive.useMutation({
     onSuccess: () => { toast.success("Archived"); refetch(); },
@@ -39,154 +35,131 @@ export default function Dashboard() {
 
   const stats = {
     total: bookings?.length || 0,
-    pending: bookings?.filter((b) => ["pending_hotel", "pending_payment", "awaiting_offline_payment"].includes(b.status)).length || 0,
-    confirmed: bookings?.filter((b) => ["confirmed", "completed"].includes(b.status)).length || 0,
+    pending: bookings?.filter((booking) => ["pending_hotel", "pending_payment", "awaiting_offline_payment"].includes(booking.status)).length || 0,
+    confirmed: bookings?.filter((booking) => ["confirmed", "completed"].includes(booking.status)).length || 0,
   };
-
-  const filtered = statusFilter
-    ? bookings?.filter((b) => b.status === statusFilter)
-    : bookings;
+  const filtered = statusFilter ? bookings?.filter((booking) => booking.status === statusFilter) : bookings;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-      <h1 className="text-2xl font-bold text-slate-800 mb-6">{t("dashboard.title")}</h1>
+    <div>
+      <PageHeader
+        eyebrow="Agency"
+        title={t("dashboard.title")}
+        description="Track booking status, payment actions, and archived requests across your agency workspace."
+        actions={<Button asChild><Link to="/marketplace">Browse marketplace</Link></Button>}
+      />
 
-      {/* Stats Cards */}
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-teal-50 flex items-center justify-center">
-              <CalendarCheck className="h-6 w-6 text-teal-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
-              <div className="text-sm text-slate-500">{t("dashboard.totalBookings")}</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <Clock className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-slate-800">{stats.pending}</div>
-              <div className="text-sm text-slate-500">{t("dashboard.pending")}</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-green-50 flex items-center justify-center">
-              <BadgeCheck className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-slate-800">{stats.confirmed}</div>
-              <div className="text-sm text-slate-500">{t("dashboard.confirmed")}</div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <StatCard label={t("dashboard.totalBookings")} value={stats.total} icon={<CalendarCheck className="h-5 w-5" />} />
+        <StatCard label={t("dashboard.pending")} value={stats.pending} icon={<Clock className="h-5 w-5" />} tone="amber" />
+        <StatCard label={t("dashboard.confirmed")} value={stats.confirmed} icon={<BadgeCheck className="h-5 w-5" />} tone="green" />
       </div>
 
-      {/* Bookings Table */}
       <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">{t("dashboard.recentBookings")}</CardTitle>
-            <div className="flex gap-2">
-              {["pending_hotel", "confirmed", "rejected"].map((s) => (
-                <Badge
-                  key={s}
-                  variant={statusFilter === s ? "default" : "outline"}
-                  className="cursor-pointer text-xs"
-                  onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-                >
-                  {t(`booking.status.${s}`)}
-                </Badge>
-              ))}
-            </div>
+        <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle>{t("dashboard.recentBookings")}</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            {["pending_hotel", "confirmed", "rejected"].map((status) => (
+              <Button
+                key={status}
+                variant={statusFilter === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter(statusFilter === status ? null : status)}
+              >
+                {t(`booking.status.${status}`)}
+              </Button>
+            ))}
           </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full" />
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-14 w-full" />
               ))}
             </div>
           ) : filtered && filtered.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-2 px-3 font-medium text-slate-500">Ref</th>
-                    <th className="text-left py-2 px-3 font-medium text-slate-500">Hôtel</th>
-                    <th className="text-left py-2 px-3 font-medium text-slate-500">Dates</th>
-                    <th className="text-left py-2 px-3 font-medium text-slate-500">Chambre</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-500">Total</th>
-                    <th className="text-left py-2 px-3 font-medium text-slate-500">Statut</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((b) => (
-                    <tr key={b.id} className="border-b border-slate-100 hover:bg-slate-50">
-                      <td className="py-2.5 px-3 font-mono text-xs text-slate-600">{b.reference}</td>
-                      <td className="py-2.5 px-3">{(b.hotel as any)?.name || "-"}</td>
-                      <td className="py-2.5 px-3 text-xs">
-                        {b.checkIn} → {b.checkOut}
-                        <br />
-                        <span className="text-slate-400">{b.nights} nuits</span>
-                      </td>
-                      <td className="py-2.5 px-3 text-xs">
-                        {b.roomNameSnapshot} x{b.roomsCount}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-medium">
-                        {Number(b.totalPrice).toLocaleString()} DZD
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <Badge className={`text-xs ${STATUS_COLORS[b.status] || ""}`}>
-                          {t(`booking.status.${b.status}`) || b.status}
-                        </Badge>
-                      </td>
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center justify-end gap-1">
-                          {b.status === "pending_payment" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs"
-                              onClick={() => confirmPayment.mutate({ bookingId: b.id })}
-                            >
-                              <CreditCard className="h-3 w-3 me-1" />
-                              Pay
-                            </Button>
-                          )}
-                          {["rejected", "expired", "cancelled"].includes(b.status) && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 text-xs"
-                              onClick={() => archiveMutation.mutate({ bookingId: b.id })}
-                            >
-                              <Archive className="h-3 w-3" />
-                            </Button>
-                          )}
+            <>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ref</TableHead>
+                      <TableHead>Hotel</TableHead>
+                      <TableHead>Dates</TableHead>
+                      <TableHead>Room</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((booking) => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-mono text-xs">{booking.reference}</TableCell>
+                        <TableCell>{(booking.hotel as any)?.name || "-"}</TableCell>
+                        <TableCell className="text-xs">
+                          {booking.checkIn} to {booking.checkOut}
+                          <div className="text-muted-foreground">{booking.nights} nights</div>
+                        </TableCell>
+                        <TableCell className="text-xs">{booking.roomNameSnapshot} x{booking.roomsCount}</TableCell>
+                        <TableCell className="text-right font-medium">{Number(booking.totalPrice).toLocaleString()} DZD</TableCell>
+                        <TableCell>
+                          <StatusBadge status={booking.status}>{t(`booking.status.${booking.status}`) || booking.status}</StatusBadge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            {booking.status === "pending_payment" ? (
+                              <Button size="sm" variant="outline" onClick={() => confirmPayment.mutate({ bookingId: booking.id })}>
+                                <CreditCard className="me-1 h-3.5 w-3.5" />
+                                Pay
+                              </Button>
+                            ) : null}
+                            {["rejected", "expired", "cancelled"].includes(booking.status) ? (
+                              <Button size="sm" variant="ghost" onClick={() => archiveMutation.mutate({ bookingId: booking.id })}>
+                                <Archive className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="space-y-3 md:hidden">
+                {filtered.map((booking) => (
+                  <Card key={booking.id}>
+                    <CardContent className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-mono text-xs text-muted-foreground">{booking.reference}</div>
+                          <h3 className="truncate font-semibold">{(booking.hotel as any)?.name || "-"}</h3>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <StatusBadge status={booking.status}>{t(`booking.status.${booking.status}`) || booking.status}</StatusBadge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground">Dates</div>
+                          <div>{booking.checkIn} to {booking.checkOut}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground">Total</div>
+                          <div className="font-semibold">{Number(booking.totalPrice).toLocaleString()} DZD</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
-            <div className="text-center py-12 text-slate-400">
-              <Receipt className="h-10 w-10 mx-auto mb-3 text-slate-300" />
-              <p>No bookings yet</p>
-              <Link to="/marketplace">
-                <Button variant="link" className="mt-2">Browse marketplace</Button>
-              </Link>
-            </div>
+            <EmptyState
+              icon={<Receipt className="h-6 w-6" />}
+              title="No bookings yet"
+              description="Start from the marketplace to create your first B2B booking."
+              action={<Button asChild><Link to="/marketplace">Browse marketplace</Link></Button>}
+            />
           )}
         </CardContent>
       </Card>

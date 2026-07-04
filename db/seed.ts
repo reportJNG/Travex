@@ -91,7 +91,8 @@ async function seed() {
   // Seed wilayas
   console.log("Seeding 58 wilayas...");
   for (const w of wilayaData) {
-    await db.insert(wilayas).values(w).onDuplicateKeyUpdate({
+    await db.insert(wilayas).values(w).onConflictDoUpdate({
+      target: wilayas.code,
       set: { nameFr: w.nameFr, nameAr: w.nameAr, nameEn: w.nameEn },
     });
   }
@@ -99,7 +100,8 @@ async function seed() {
   // Seed amenities
   console.log("Seeding amenities...");
   for (const a of amenityData) {
-    await db.insert(amenities).values(a).onDuplicateKeyUpdate({
+    await db.insert(amenities).values(a).onConflictDoUpdate({
+      target: amenities.key,
       set: { labelAr: a.labelAr, labelFr: a.labelFr, labelEn: a.labelEn },
     });
   }
@@ -107,7 +109,8 @@ async function seed() {
   // Seed platform settings
   console.log("Seeding platform settings...");
   for (const s of settingsData) {
-    await db.insert(platformSettings).values(s).onDuplicateKeyUpdate({
+    await db.insert(platformSettings).values(s).onConflictDoUpdate({
+      target: platformSettings.key,
       set: { value: s.value },
     });
   }

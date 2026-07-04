@@ -289,16 +289,19 @@ export const adminRouter = createRouter({
 
         const dueDate = new Date(input.year, input.month, 10);
 
-        const result = await db.insert(invoices).values({
+        const [createdInvoice] = await db.insert(invoices).values({
           hotelId: hotelId,
           periodYear: input.year,
           periodMonth: input.month,
           bookingsTotal: String(total),
           commissionDue: String(commission),
           dueDate: dueDate.toISOString().split("T")[0] as any,
-        } as any);
+        } as any).returning({ id: invoices.id });
 
-        const invoiceId = Number(result[0].insertId);
+        if (!createdInvoice) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CREATE_INVOICE_FAILED" });
+        }
+        const invoiceId = createdInvoice.id;
 
         for (const b of hotelBookings) {
           await db

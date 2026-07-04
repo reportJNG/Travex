@@ -48,7 +48,7 @@ export const hotelRouter = createRouter({
         throw new TRPCError({ code: "CONFLICT", message: "HOTEL_EXISTS" });
       }
 
-      const result = await db.insert(hotels).values({
+      const [createdHotel] = await db.insert(hotels).values({
         ownerProfileId: ctx.user.id,
         isSeeded: false,
         name: input.name,
@@ -64,9 +64,13 @@ export const hotelRouter = createRouter({
         googleMapsUrl: input.googleMapsUrl || null,
         lat: input.lat || null,
         lng: input.lng || null,
-      });
+      }).returning({ id: hotels.id });
 
-      return { success: true, hotelId: Number(result[0].insertId) };
+      if (!createdHotel) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CREATE_HOTEL_FAILED" });
+      }
+
+      return { success: true, hotelId: createdHotel.id };
     }),
 
   updateHotel: hotelQuery

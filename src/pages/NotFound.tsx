@@ -1,21 +1,25 @@
 import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
-      <h1 className="text-6xl font-bold text-slate-200 mb-4">404</h1>
-      <h2 className="text-xl font-semibold text-slate-700 mb-2">Page Not Found</h2>
-      <p className="text-slate-500 max-w-md mb-6">
-        The page you are looking for does not exist or has been moved.
-      </p>
-      <Link to="/">
-        <Button className="bg-teal-600 hover:bg-teal-700">
-          <Home className="h-4 w-4 me-2" />
-          Back to Home
+    <main className="flex min-h-[70vh] items-center justify-center px-4 py-12 text-center">
+      <div className="max-w-md">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-2xl font-bold text-primary">
+          404
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Page not found</h1>
+        <p className="mt-3 text-muted-foreground">
+          This page does not exist or has moved. Head back to the marketplace or home page to continue.
+        </p>
+        <Button asChild className="mt-6">
+          <Link to="/">
+            <Home className="me-2 h-4 w-4" />
+            Back to home
+          </Link>
         </Button>
-      </Link>
-    </div>
+      </div>
+    </main>
   );
 }
