@@ -19,7 +19,7 @@ export default function Requests() {
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.hotel.getRequests.useQuery();
   const [refuseReason, setRefuseReason] = useState("");
-  const [refusingId, setRefusingId] = useState<number | null>(null);
+  const [refusingId, setRefusingId] = useState<string | null>(null);
 
   const decideMutation = trpc.booking.decide.useMutation({
     onSuccess: () => {
@@ -40,7 +40,7 @@ export default function Requests() {
   const awaiting = data?.awaitingPayment || [];
   const other = data?.other || [];
 
-  const handleDecide = (bookingId: number, approve: boolean) => {
+  const handleDecide = (bookingId: string, approve: boolean) => {
     if (!approve) {
       if (refusingId !== bookingId) {
         setRefusingId(bookingId);

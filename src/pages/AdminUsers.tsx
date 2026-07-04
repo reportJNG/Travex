@@ -58,7 +58,7 @@ export default function AdminUsers() {
   const renderActions = (user: Record<string, unknown>) => {
     const status = user.status as string;
     const role = user.role as string;
-    const userId = user.id as number;
+    const userId = user.id as string;
     const name = (user.name as string) || "this user";
 
     if (status === "approved" && role !== "super_admin") {
@@ -150,7 +150,7 @@ export default function AdminUsers() {
                     {users.map((user: Record<string, unknown>) => {
                       const profile = user.profile as Record<string, unknown> | undefined;
                       return (
-                        <TableRow key={user.id as number}>
+                        <TableRow key={user.id as string}>
                           <TableCell>
                             <div className="max-w-64 truncate font-medium">{(user.name as string) || "-"}</div>
                             <div className="max-w-64 truncate text-xs text-muted-foreground">{(profile?.legalName as string) || "-"}</div>
@@ -178,7 +178,7 @@ export default function AdminUsers() {
                 {users.map((user: Record<string, unknown>) => {
                   const profile = user.profile as Record<string, unknown> | undefined;
                   return (
-                    <Card key={user.id as number}>
+                    <Card key={user.id as string}>
                       <CardContent className="space-y-3 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">

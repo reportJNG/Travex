@@ -167,12 +167,12 @@ export default function Marketplace() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {hotels.map((hotel: Record<string, unknown>) => {
                 const photos = (hotel.photos || []) as Array<{ storagePath: string }>;
-                const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr: string } }>;
+                const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; label?: { fr?: string }; labelFr?: string } }>;
                 const totalAvailable = (hotel.totalAvailable as number) || 0;
                 const isSeeded = hotel.isSeeded as boolean;
                 const minRate = hotel.minRate ? Number(hotel.minRate) : null;
                 return (
-                  <Card key={hotel.id as number} className="group overflow-hidden">
+                  <Card key={hotel.id as string} className="group overflow-hidden">
                     <div className="relative aspect-[4/3] overflow-hidden bg-muted">
                       {photos[0]?.storagePath ? (
                         <img
@@ -206,7 +206,7 @@ export default function Marketplace() {
                         {amenities.slice(0, 3).map((item) => (
                           <Badge key={item.amenity.key} variant="secondary" className="gap-1 text-xs font-normal">
                             {AMENITY_ICONS[item.amenity.key] || null}
-                            {item.amenity.labelFr}
+                            {item.amenity.label?.fr || item.amenity.labelFr}
                           </Badge>
                         ))}
                       </div>

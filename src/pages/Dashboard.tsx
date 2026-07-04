@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Archive, BadgeCheck, CalendarCheck, Clock, CreditCard, Receipt } from "lucide-react";
+import { Archive, BadgeCheck, CalendarCheck, Clock, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
@@ -26,10 +26,6 @@ export default function Dashboard() {
   const { data: bookings, isLoading, refetch } = trpc.booking.myBookings.useQuery();
   const archiveMutation = trpc.booking.archive.useMutation({
     onSuccess: () => { toast.success("Archived"); refetch(); },
-    onError: (err) => toast.error(err.message),
-  });
-  const confirmPayment = trpc.booking.confirmPayment.useMutation({
-    onSuccess: () => { toast.success("Payment confirmed"); refetch(); },
     onError: (err) => toast.error(err.message),
   });
 
@@ -109,12 +105,6 @@ export default function Dashboard() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            {booking.status === "pending_payment" ? (
-                              <Button size="sm" variant="outline" onClick={() => confirmPayment.mutate({ bookingId: booking.id })}>
-                                <CreditCard className="me-1 h-3.5 w-3.5" />
-                                Pay
-                              </Button>
-                            ) : null}
                             {["rejected", "expired", "cancelled"].includes(booking.status) ? (
                               <Button size="sm" variant="ghost" onClick={() => archiveMutation.mutate({ bookingId: booking.id })}>
                                 <Archive className="h-3.5 w-3.5" />

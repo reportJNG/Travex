@@ -38,7 +38,7 @@ export default function AdminClaims() {
             const seededHotel = claim.seededHotel as Record<string, unknown> | undefined;
             const claimant = claim.claimant as Record<string, unknown> | undefined;
             return (
-              <Card key={claim.id as number}>
+              <Card key={claim.id as string}>
                 <CardContent className="space-y-4 p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -66,7 +66,7 @@ export default function AdminClaims() {
                         title="Approve this claim?"
                         description="The seeded hotel will be deactivated and this claimant will own the hotel profile."
                         confirmLabel="Approve takeover"
-                        onConfirm={() => decideMutation.mutate({ claimId: claim.id as number, approve: true })}
+                        onConfirm={() => decideMutation.mutate({ claimId: claim.id as string, approve: true })}
                       >
                         <Button size="sm" disabled={decideMutation.isPending}>
                           <CheckCircle className="me-1 h-4 w-4" />
@@ -78,7 +78,7 @@ export default function AdminClaims() {
                         description="The claimant will be notified that the takeover request was rejected."
                         confirmLabel={t("admin.reject")}
                         destructive
-                        onConfirm={() => decideMutation.mutate({ claimId: claim.id as number, approve: false })}
+                        onConfirm={() => decideMutation.mutate({ claimId: claim.id as string, approve: false })}
                       >
                         <Button size="sm" variant="outline" disabled={decideMutation.isPending}>
                           <XCircle className="me-1 h-4 w-4" />

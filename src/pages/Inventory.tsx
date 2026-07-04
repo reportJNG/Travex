@@ -310,7 +310,7 @@ export default function Inventory() {
           {rooms.map((room) => {
             const isActive = Boolean(room.isActive);
             return (
-              <Card key={room.id as number} className={!isActive ? "opacity-70" : ""}>
+              <Card key={room.id as string} className={!isActive ? "opacity-70" : ""}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -331,7 +331,7 @@ export default function Inventory() {
                         size="icon"
                         variant="outline"
                         className="h-8 w-8"
-                        onClick={() => adjustAvailability.mutate({ roomId: room.id as number, delta: -1 })}
+                        onClick={() => adjustAvailability.mutate({ roomId: room.id as string, delta: -1 })}
                         disabled={adjustAvailability.isPending}
                         aria-label="Decrease availability"
                       >
@@ -344,7 +344,7 @@ export default function Inventory() {
                         size="icon"
                         variant="outline"
                         className="h-8 w-8"
-                        onClick={() => adjustAvailability.mutate({ roomId: room.id as number, delta: 1 })}
+                        onClick={() => adjustAvailability.mutate({ roomId: room.id as string, delta: 1 })}
                         disabled={adjustAvailability.isPending}
                         aria-label="Increase availability"
                       >
@@ -354,7 +354,7 @@ export default function Inventory() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => toggleRoom.mutate({ roomId: room.id as number })}
+                      onClick={() => toggleRoom.mutate({ roomId: room.id as string })}
                       disabled={toggleRoom.isPending}
                     >
                       {isActive ? <ToggleRight className="me-1 h-5 w-5 text-primary" /> : <ToggleLeft className="me-1 h-5 w-5 text-muted-foreground" />}

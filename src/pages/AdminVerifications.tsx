@@ -14,7 +14,7 @@ export default function AdminVerifications() {
   const { t } = useI18n();
   const utils = trpc.useUtils();
   const { data: users, isLoading } = trpc.admin.listUsers.useQuery({ status: "awaiting_review" });
-  const [reasons, setReasons] = useState<Record<number, string>>({});
+  const [reasons, setReasons] = useState<Record<string, string>>({});
 
   const reviewMutation = trpc.admin.reviewAccount.useMutation({
     onSuccess: () => {
@@ -38,7 +38,7 @@ export default function AdminVerifications() {
         <div className="space-y-4">
           {users.map((user: Record<string, unknown>) => {
             const profile = user.profile as Record<string, unknown> | undefined;
-            const userId = user.id as number;
+            const userId = user.id as string;
             const taxId = typeof profile?.taxId === "string" ? profile.taxId : "";
             const licenseNumber = typeof profile?.licenseNumber === "string" ? profile.licenseNumber : "";
             return (

@@ -1345,7 +1345,8 @@ alter publication supabase_realtime add table bookings;
 --
 -- 2. Copy the UUID that Supabase generates for that user.
 --
--- 3. Run this (replace the UUID and your details):
+-- 3. If this user does NOT already exist in profiles, run this
+--    (replace the UUID and your details):
 --
 --    INSERT INTO profiles (id, role, status, full_name, legal_name, email, phone)
 --    VALUES (
@@ -1357,5 +1358,24 @@ alter publication supabase_realtime add table bookings;
 --      'your-admin@email.com',
 --      '+213XXXXXXXXX'
 --    );
+--
+--    If the user already exists in profiles as awaiting_review, temporarily
+--    disable the protection trigger while bootstrapping the first admin:
+--
+--    ALTER TABLE profiles DISABLE TRIGGER trg_protect_profile;
+--
+--    UPDATE profiles
+--    SET role = 'super_admin',
+--        status = 'approved',
+--        full_name = 'Benamer Abdou-Rahmane',
+--        legal_name = 'TRAVEX',
+--        email = 'your-admin@email.com',
+--        phone = '+213XXXXXXXXX',
+--        rejection_reason = NULL,
+--        reviewed_by = NULL,
+--        reviewed_at = now()
+--    WHERE id = 'PASTE-THE-UUID-HERE';
+--
+--    ALTER TABLE profiles ENABLE TRIGGER trg_protect_profile;
 --
 -- That's it. Your database is fully set up.

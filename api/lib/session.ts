@@ -1,57 +1,80 @@
-import * as cookie from "cookie";
-import * as jose from "jose";
-import { eq } from "drizzle-orm";
-import { Session } from "@contracts/constants";
 import { Errors } from "@contracts/errors";
-import { users } from "@db/schema";
-import { env } from "./env";
-import { getDb } from "../queries/connection";
+import {
+  createSupabaseForToken,
+  getAuthCookies,
+  profileToAppUser,
+  setSupabaseSessionCookies,
+  type AppUser,
+} from "./supabase";
 
-const JWT_ALG = "HS256";
-
-type SessionPayload = {
-  userId: number;
-};
-
-export async function signSessionToken(payload: SessionPayload): Promise<string> {
-  const secret = new TextEncoder().encode(env.sessionSecret);
-  return new jose.SignJWT(payload)
-    .setProtectedHeader({ alg: JWT_ALG })
-    .setIssuedAt()
-    .setExpirationTime("1 year")
-    .sign(secret);
-}
-
-async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const secret = new TextEncoder().encode(env.sessionSecret);
-    const { payload } = await jose.jwtVerify(token, secret, {
-      algorithms: [JWT_ALG],
-    });
-    const userId = Number(payload.userId);
-    return Number.isInteger(userId) ? { userId } : null;
-  } catch {
-    return null;
+export async function authenticateRequest(
+  headers: Headers,
+  cookieWriter?: { req: Request; resHeaders: Headers },
+): Promise<AppUser> {
+  const { accessToken, refreshToken } = getAuthCookies(headers);
+  if (!accessToken && !refreshToken) {
+    throw Errors.forbidden("Invalid authentication token.");
   }
-}
 
-export async function authenticateRequest(headers: Headers) {
-  const cookies = cookie.parse(headers.get("cookie") || "");
-  const token = cookies[Session.cookieName];
+  let token = accessToken;
+  if (!token && refreshToken) {
+    const refreshClient = createSupabaseForToken();
+    const { data, error } = await refreshClient.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    if (error || !data.session) {
+      throw Errors.forbidden("Invalid authentication token.");
+    }
+    token = data.session.access_token;
+    if (cookieWriter) {
+      setSupabaseSessionCookies(cookieWriter, data.session);
+    }
+  }
   if (!token) {
     throw Errors.forbidden("Invalid authentication token.");
   }
 
-  const claim = await verifySessionToken(token);
-  if (!claim) {
+  const supabase = createSupabaseForToken(token);
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+
+  if ((userError || !userData.user) && refreshToken) {
+    const refreshClient = createSupabaseForToken();
+    const { data, error } = await refreshClient.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
+    if (error || !data.session) {
+      throw Errors.forbidden("Invalid authentication token.");
+    }
+    if (cookieWriter) {
+      setSupabaseSessionCookies(cookieWriter, data.session);
+    }
+    const refreshed = await createSupabaseForToken(data.session.access_token).auth.getUser(
+      data.session.access_token,
+    );
+    if (refreshed.error || !refreshed.data.user) {
+      throw Errors.forbidden("Invalid authentication token.");
+    }
+    return authenticateWithAccessToken(data.session.access_token, refreshed.data.user.id);
+  }
+
+  if (userError || !userData.user) {
     throw Errors.forbidden("Invalid authentication token.");
   }
 
-  const user = await getDb().query.users.findFirst({
-    where: eq(users.id, claim.userId),
-  });
-  if (!user) {
-    throw Errors.forbidden("User not found. Please sign in again.");
+  return authenticateWithAccessToken(token, userData.user.id);
+}
+
+async function authenticateWithAccessToken(accessToken: string, userId: string): Promise<AppUser> {
+  const supabase = createSupabaseForToken(accessToken);
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (error || !profile) {
+    throw Errors.forbidden("Profile not found. Please sign in again.");
   }
-  return user;
+
+  return profileToAppUser(profile);
 }

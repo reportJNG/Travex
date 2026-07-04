@@ -68,8 +68,22 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/marketplace" element={<Marketplace />} />
-        <Route path="/hotel/:id" element={<HotelDetail />} />
+        <Route
+          path="/marketplace"
+          element={
+            <RoleGuard allowedRoles={["agency", "hotel", "super_admin"]}>
+              <Marketplace />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/hotel/:id"
+          element={
+            <RoleGuard allowedRoles={["agency", "hotel", "super_admin"]}>
+              <HotelDetail />
+            </RoleGuard>
+          }
+        />
 
         {/* Holding pages */}
         <Route path="/pending" element={<PendingPage />} />

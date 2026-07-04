@@ -1,6 +1,6 @@
 # Travex
 
-Travex is a Vite React app with a Hono/tRPC API, Drizzle ORM, and Supabase Postgres.
+Travex is a Vite React app with a Hono/tRPC API backed by Supabase Auth, RLS tables, Storage, Realtime, and SQL RPCs from `db/db.sql`.
 
 ## Setup
 
@@ -10,11 +10,14 @@ Travex is a Vite React app with a Hono/tRPC API, Drizzle ORM, and Supabase Postg
 npm ci
 ```
 
-2. Create `.env.local` from `.env.example` and set:
+2. Create `.env` from `.env.example` and set:
 
 ```bash
-SESSION_SECRET=
-DATABASE_URL=
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 ```
 
 3. Run the app:
@@ -34,4 +37,4 @@ npm run build
 
 ## Vercel
 
-Set `SESSION_SECRET` and `DATABASE_URL` in Vercel environment variables. The project uses `vercel.json` to build the Vite app into `dist/public`, route `/api/*` to the Hono function, and route all other paths to the SPA entry.
+Set the Supabase environment variables in Vercel. The project uses `vercel.json` to build the Vite app into `dist/public`, route `/api/*` to the Hono function, and route all other paths to the SPA entry.

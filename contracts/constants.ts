@@ -1,5 +1,7 @@
 export const Session = {
-  cookieName: "travex_sid",
+  accessCookieName: "travex_sb_access",
+  refreshCookieName: "travex_sb_refresh",
+  cookieName: "travex_sb_access",
   maxAgeMs: 365 * 24 * 60 * 60 * 1000,
 } as const;
 

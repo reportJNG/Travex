@@ -1,11 +1,9 @@
 import { z } from "zod";
-import { createRouter, publicQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { hotels, roomTypes, wilayas } from "@db/schema";
-import { eq, and, like, desc } from "drizzle-orm";
+import { createRouter, authedQuery } from "./middleware";
+import { camelize } from "./lib/shape";
 
 export const marketplaceRouter = createRouter({
-  listHotels: publicQuery
+  listHotels: authedQuery
     .input(
       z.object({
         wilaya: z.number().optional(),
@@ -16,99 +14,87 @@ export const marketplaceRouter = createRouter({
         search: z.string().optional(),
         page: z.number().default(1),
         limit: z.number().default(12),
-      })
+      }),
     )
-    .query(async ({ input }) => {
-      const db = getDb();
-      const conditions = [eq(hotels.isActive, true)];
+    .query(async ({ ctx, input }) => {
+      const from = (input.page - 1) * input.limit;
+      const to = from + input.limit - 1;
+      let query = ctx.supabase
+        .from("hotels")
+        .select(
+          "*, wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
+        )
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
-      if (input.wilaya) conditions.push(eq(hotels.wilayaCode, input.wilaya));
-      if (input.stars) conditions.push(eq(hotels.starRating, input.stars));
-      if (input.search) conditions.push(like(hotels.name, `%${input.search}%`));
+      if (input.wilaya) query = query.eq("wilaya_code", input.wilaya);
+      if (input.stars) query = query.eq("star_rating", input.stars);
+      if (input.search) query = query.ilike("name", `%${input.search}%`);
 
-      const offset = (input.page - 1) * input.limit;
+      const { data, error } = await query;
+      if (error) throw error;
 
-      const results = await db.query.hotels.findMany({
-        where: and(...conditions),
-        with: {
-          wilaya: true,
-          photos: { limit: 1 },
-          amenities: { with: { amenity: true } },
-          rooms: { where: eq(roomTypes.isActive, true) },
-        },
-        limit: input.limit,
-        offset,
-        orderBy: [desc(hotels.createdAt)],
-      });
-
-      let filtered = results;
+      let results = data ?? [];
       if (input.minPrice || input.maxPrice) {
-        filtered = results.filter((h: Record<string, unknown>) => {
-          const rooms = (h.rooms || []) as Array<{ b2bRate: string | number }>;
-          const minRate = rooms.length > 0
-            ? Math.min(...rooms.map((r: { b2bRate: string | number }) => Number(r.b2bRate)))
-            : 0;
+        results = results.filter((hotel) => {
+          const rooms = (hotel.rooms ?? []) as Array<{ b2b_rate: string | number }>;
+          const minRate = rooms.length ? Math.min(...rooms.map((room) => Number(room.b2b_rate))) : 0;
           if (input.minPrice && minRate < input.minPrice) return false;
           if (input.maxPrice && minRate > input.maxPrice) return false;
           return true;
         });
       }
 
-      if (input.amenities && input.amenities.length > 0) {
-        filtered = filtered.filter((h: Record<string, unknown>) => {
-          const ha = (h.amenities || []) as Array<{ amenity: { key: string } }>;
-          return input.amenities!.some((a: string) =>
-            ha.some((haItem: { amenity: { key: string } }) => haItem.amenity.key === a)
-          );
+      if (input.amenities?.length) {
+        results = results.filter((hotel) => {
+          const amenities = (hotel.amenities ?? []) as Array<{ amenity: { key: string } }>;
+          return input.amenities!.some((key) => amenities.some((item) => item.amenity.key === key));
         });
       }
 
-      return filtered.map((h: Record<string, unknown>) => {
-        const rooms = (h.rooms || []) as Array<{ b2bRate: string | number; availableCount: number }>;
-        return {
-          ...h,
-          minRate: rooms.length > 0
-            ? Math.min(...rooms.map((r: { b2bRate: string | number }) => Number(r.b2bRate)))
-            : null,
-          totalAvailable: rooms.reduce((sum: number, r: { availableCount: number }) => sum + r.availableCount, 0),
-        };
+      return camelize(
+        results.map((hotel) => {
+          const rooms = (hotel.rooms ?? []) as Array<{ b2b_rate: string | number; available_count: number }>;
+          return {
+            ...hotel,
+            min_rate: rooms.length ? Math.min(...rooms.map((room) => Number(room.b2b_rate))) : null,
+            total_available: rooms.reduce((sum, room) => sum + room.available_count, 0),
+          };
+        }),
+      );
+    }),
+
+  getHotel: authedQuery
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.supabase
+        .from("hotels")
+        .select(
+          "*, wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
+        )
+        .eq("id", input.id)
+        .eq("rooms.is_active", true)
+        .single();
+
+      if (error || !data) return null;
+
+      const rooms = (data.rooms ?? []) as Array<{ b2b_rate: string | number }>;
+      return camelize({
+        ...data,
+        min_rate: rooms.length ? Math.min(...rooms.map((room) => Number(room.b2b_rate))) : null,
       });
     }),
 
-  getHotel: publicQuery
-    .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
-      const db = getDb();
-      const hotel = await db.query.hotels.findFirst({
-        where: eq(hotels.id, input.id),
-        with: {
-          wilaya: true,
-          photos: true,
-          amenities: { with: { amenity: true } },
-          rooms: { where: eq(roomTypes.isActive, true) },
-        },
-      });
-
-      if (!hotel) return null;
-
-      const rooms = (hotel.rooms || []) as Array<{ b2bRate: string | number }>;
-      return {
-        ...hotel,
-        minRate: rooms.length > 0
-          ? Math.min(...rooms.map((r: { b2bRate: string | number }) => Number(r.b2bRate)))
-          : null,
-      };
-    }),
-
-  listWilayas: publicQuery.query(async () => {
-    const db = getDb();
-    return db.query.wilayas.findMany({
-      orderBy: [wilayas.code],
-    });
+  listWilayas: authedQuery.query(async ({ ctx }) => {
+    const { data, error } = await ctx.supabase.from("wilayas").select("*").order("code");
+    if (error) throw error;
+    return camelize(data ?? []);
   }),
 
-  listAmenities: publicQuery.query(async () => {
-    const db = getDb();
-    return db.query.amenities.findMany();
+  listAmenities: authedQuery.query(async ({ ctx }) => {
+    const { data, error } = await ctx.supabase.from("amenities").select("*").order("key");
+    if (error) throw error;
+    return camelize(data ?? []);
   }),
 });

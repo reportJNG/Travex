@@ -1,54 +1,48 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { createRouter, approvedQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { notifications } from "@db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { camelize } from "./lib/shape";
 
 export const notificationRouter = createRouter({
   list: approvedQuery.query(async ({ ctx }) => {
-    const db = getDb();
-    return db.query.notifications.findMany({
-      where: eq(notifications.userId, ctx.user.id),
-      orderBy: [desc(notifications.createdAt)],
-      limit: 50,
-    });
+    const { data, error } = await ctx.supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", ctx.user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    return camelize(data ?? []);
   }),
 
   unreadCount: approvedQuery.query(async ({ ctx }) => {
-    const db = getDb();
-    const result = await db.select({ count: sql<number>`count(*)` })
-      .from(notifications)
-      .where(
-        and(
-          eq(notifications.userId, ctx.user.id),
-          sql`${notifications.readAt} IS NULL`
-        )
-      );
-    return Number(result[0]?.count ?? 0);
+    const { count, error } = await ctx.supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", ctx.user.id)
+      .is("read_at", null);
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    return count ?? 0;
   }),
 
   markRead: approvedQuery
-    .input(z.object({ notificationId: z.number() }))
+    .input(z.object({ notificationId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-      await db
-        .update(notifications)
-        .set({ readAt: new Date() })
-        .where(
-          and(
-            eq(notifications.id, input.notificationId),
-            eq(notifications.userId, ctx.user.id)
-          )
-        );
+      const { error } = await ctx.supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("id", input.notificationId)
+        .eq("user_id", ctx.user.id);
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
       return { success: true };
     }),
 
   markAllRead: approvedQuery.mutation(async ({ ctx }) => {
-    const db = getDb();
-    await db
-      .update(notifications)
-      .set({ readAt: new Date() })
-      .where(eq(notifications.userId, ctx.user.id));
+    const { error } = await ctx.supabase
+      .from("notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", ctx.user.id);
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     return { success: true };
   }),
 });

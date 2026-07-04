@@ -64,7 +64,7 @@ export default function HotelDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const hotelId = parseInt(id || "0");
+  const hotelId = id || "";
   const { data: hotel, isLoading } = trpc.marketplace.getHotel.useQuery({ id: hotelId });
   const createBooking = trpc.booking.create.useMutation({
     onSuccess: (data) => {
@@ -74,7 +74,7 @@ export default function HotelDetail() {
     onError: (err) => toast.error(err.message),
   });
 
-  const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [roomsCount, setRoomsCount] = useState(1);
@@ -134,7 +134,7 @@ export default function HotelDetail() {
   }
 
   const photos = (hotel.photos || []) as Array<{ storagePath: string }>;
-  const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr: string } }>;
+  const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; label?: { fr?: string }; labelFr?: string } }>;
   const isSeeded = hotel.isSeeded as boolean;
   const wilaya = hotel.wilaya as { nameFr?: string } | undefined;
   const wilayaName = wilaya?.nameFr || "Algeria";
@@ -266,7 +266,7 @@ export default function HotelDetail() {
                   {amenities.map((item) => (
                     <Badge key={item.amenity.key} variant="secondary" className="gap-1.5 px-3 py-1.5">
                       {AMENITY_ICON_MAP[item.amenity.key] || null}
-                      {item.amenity.labelFr}
+                      {item.amenity.label?.fr || item.amenity.labelFr}
                     </Badge>
                   ))}
                 </div>
@@ -286,9 +286,9 @@ export default function HotelDetail() {
                   const available = Number(room.availableCount || 0);
                   return (
                     <button
-                      key={room.id as number}
+                      key={room.id as string}
                       type="button"
-                      onClick={() => setSelectedRoom(room.id as number)}
+                      onClick={() => setSelectedRoom(room.id as string)}
                       className={`w-full rounded-xl border p-4 text-left transition-colors hover:bg-accent ${selectedRoom === room.id ? "border-primary bg-primary/10" : ""}`}
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

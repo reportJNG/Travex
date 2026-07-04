@@ -1,23 +1,29 @@
 import { z } from "zod";
-import { createRouter, hotelQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { hotels, hotelAmenities, roomTypes, bookings } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { createRouter, hotelQuery } from "./middleware";
+import { camelize } from "./lib/shape";
+
+async function getOwnedHotel(ctx: { supabase: any; user: { id: string } }) {
+  const { data, error } = await ctx.supabase
+    .from("hotels")
+    .select("*")
+    .eq("owner_profile_id", ctx.user.id)
+    .maybeSingle();
+  if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  return data;
+}
 
 export const hotelRouter = createRouter({
   myHotel: hotelQuery.query(async ({ ctx }) => {
-    const db = getDb();
-    const hotel = await db.query.hotels.findFirst({
-      where: eq(hotels.ownerProfileId, ctx.user.id),
-      with: {
-        wilaya: true,
-        photos: true,
-        amenities: { with: { amenity: true } },
-        rooms: true,
-      },
-    });
-    return hotel ?? null;
+    const { data, error } = await ctx.supabase
+      .from("hotels")
+      .select(
+        "*, wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
+      )
+      .eq("owner_profile_id", ctx.user.id)
+      .maybeSingle();
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    return data ? camelize(data) : null;
   }),
 
   createHotel: hotelQuery
@@ -36,41 +42,43 @@ export const hotelRouter = createRouter({
         googleMapsUrl: z.string().optional(),
         lat: z.string().optional(),
         lng: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
+      const { data: existing } = await ctx.supabase
+        .from("hotels")
+        .select("id")
+        .eq("owner_profile_id", ctx.user.id)
+        .maybeSingle();
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "HOTEL_EXISTS" });
 
-      const existing = await db.query.hotels.findFirst({
-        where: eq(hotels.ownerProfileId, ctx.user.id),
-      });
-      if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "HOTEL_EXISTS" });
+      const { data, error } = await ctx.supabase
+        .from("hotels")
+        .insert({
+          owner_profile_id: ctx.user.id,
+          is_seeded: false,
+          name: input.name,
+          description: input.description || null,
+          wilaya_code: input.wilayaCode,
+          address: input.address || null,
+          star_rating: input.starRating || null,
+          phone: input.phone || null,
+          email: input.email || null,
+          website_url: input.websiteUrl || null,
+          facebook_url: input.facebookUrl || null,
+          instagram_url: input.instagramUrl || null,
+          google_maps_url: input.googleMapsUrl || null,
+          lat: input.lat ? Number(input.lat) : null,
+          lng: input.lng ? Number(input.lng) : null,
+        })
+        .select("id")
+        .single();
+
+      if (error || !data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error?.message || "CREATE_HOTEL_FAILED" });
       }
 
-      const [createdHotel] = await db.insert(hotels).values({
-        ownerProfileId: ctx.user.id,
-        isSeeded: false,
-        name: input.name,
-        description: input.description || null,
-        wilayaCode: input.wilayaCode,
-        address: input.address || null,
-        starRating: input.starRating || null,
-        phone: input.phone || null,
-        email: input.email || null,
-        websiteUrl: input.websiteUrl || null,
-        facebookUrl: input.facebookUrl || null,
-        instagramUrl: input.instagramUrl || null,
-        googleMapsUrl: input.googleMapsUrl || null,
-        lat: input.lat || null,
-        lng: input.lng || null,
-      }).returning({ id: hotels.id });
-
-      if (!createdHotel) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CREATE_HOTEL_FAILED" });
-      }
-
-      return { success: true, hotelId: createdHotel.id };
+      return { success: true, hotelId: data.id };
     }),
 
   updateHotel: hotelQuery
@@ -88,45 +96,42 @@ export const hotelRouter = createRouter({
         instagramUrl: z.string().optional(),
         googleMapsUrl: z.string().optional(),
         amenityIds: z.array(z.number()).optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
+      const hotel = await getOwnedHotel(ctx);
+      if (!hotel) throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
 
-      const hotel = await db.query.hotels.findFirst({
-        where: eq(hotels.ownerProfileId, ctx.user.id),
-      });
-      if (!hotel) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
-      }
-
-      await db
-        .update(hotels)
-        .set({
+      const { error } = await ctx.supabase
+        .from("hotels")
+        .update({
           ...(input.name && { name: input.name }),
           ...(input.description !== undefined && { description: input.description }),
-          ...(input.wilayaCode && { wilayaCode: input.wilayaCode }),
+          ...(input.wilayaCode && { wilaya_code: input.wilayaCode }),
           ...(input.address !== undefined && { address: input.address }),
-          ...(input.starRating && { starRating: input.starRating }),
+          ...(input.starRating && { star_rating: input.starRating }),
           ...(input.phone !== undefined && { phone: input.phone }),
           ...(input.email !== undefined && { email: input.email }),
-          ...(input.websiteUrl !== undefined && { websiteUrl: input.websiteUrl }),
-          ...(input.facebookUrl !== undefined && { facebookUrl: input.facebookUrl }),
-          ...(input.instagramUrl !== undefined && { instagramUrl: input.instagramUrl }),
-          ...(input.googleMapsUrl !== undefined && { googleMapsUrl: input.googleMapsUrl }),
-          updatedAt: new Date(),
+          ...(input.websiteUrl !== undefined && { website_url: input.websiteUrl }),
+          ...(input.facebookUrl !== undefined && { facebook_url: input.facebookUrl }),
+          ...(input.instagramUrl !== undefined && { instagram_url: input.instagramUrl }),
+          ...(input.googleMapsUrl !== undefined && { google_maps_url: input.googleMapsUrl }),
         })
-        .where(eq(hotels.id, hotel.id));
+        .eq("id", hotel.id);
+
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
 
       if (input.amenityIds) {
-        await db.delete(hotelAmenities).where(eq(hotelAmenities.hotelId, hotel.id));
-        if (input.amenityIds.length > 0) {
-          await db.insert(hotelAmenities).values(
-            input.amenityIds.map((aid) => ({
-              hotelId: Number(hotel.id),
-              amenityId: aid,
-            }))
+        const remove = await ctx.supabase.from("hotel_amenities").delete().eq("hotel_id", hotel.id);
+        if (remove.error) throw new TRPCError({ code: "BAD_REQUEST", message: remove.error.message });
+        if (input.amenityIds.length) {
+          const add = await ctx.supabase.from("hotel_amenities").insert(
+            input.amenityIds.map((amenityId) => ({
+              hotel_id: hotel.id,
+              amenity_id: amenityId,
+            })),
           );
+          if (add.error) throw new TRPCError({ code: "BAD_REQUEST", message: add.error.message });
         }
       }
 
@@ -136,160 +141,114 @@ export const hotelRouter = createRouter({
   upsertRoom: hotelQuery
     .input(
       z.object({
-        id: z.number().optional(),
+        id: z.string().uuid().optional(),
         name: z.string().min(1),
         totalCapacity: z.number().int().positive(),
         b2bRate: z.number().positive(),
         thumbnailPath: z.string().optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-
-      const hotel = await db.query.hotels.findFirst({
-        where: eq(hotels.ownerProfileId, ctx.user.id),
-      });
-      if (!hotel) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
-      }
+      const hotel = await getOwnedHotel(ctx);
+      if (!hotel) throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
 
       if (input.id) {
-        await db
-          .update(roomTypes)
-          .set({
+        const { error } = await ctx.supabase
+          .from("room_types")
+          .update({
             name: input.name,
-            totalCapacity: input.totalCapacity,
-            availableCount: input.totalCapacity,
-            b2bRate: String(input.b2bRate),
-            thumbnailPath: input.thumbnailPath || null,
-            updatedAt: new Date(),
+            total_capacity: input.totalCapacity,
+            available_count: input.totalCapacity,
+            b2b_rate: input.b2bRate,
+            thumbnail_path: input.thumbnailPath || null,
           })
-          .where(and(eq(roomTypes.id, input.id), eq(roomTypes.hotelId, hotel.id)));
+          .eq("id", input.id)
+          .eq("hotel_id", hotel.id);
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
       } else {
-        await db.insert(roomTypes).values({
-          hotelId: Number(hotel.id),
+        const { error } = await ctx.supabase.from("room_types").insert({
+          hotel_id: hotel.id,
           name: input.name,
-          totalCapacity: input.totalCapacity,
-          availableCount: input.totalCapacity,
-          b2bRate: String(input.b2bRate),
-          thumbnailPath: input.thumbnailPath || null,
+          total_capacity: input.totalCapacity,
+          available_count: input.totalCapacity,
+          b2b_rate: input.b2bRate,
+          thumbnail_path: input.thumbnailPath || null,
         });
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
       }
 
       return { success: true };
     }),
 
   adjustAvailability: hotelQuery
-    .input(z.object({ roomId: z.number(), delta: z.number().int() }))
+    .input(z.object({ roomId: z.string().uuid(), delta: z.number().int() }))
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-
-      const hotel = await db.query.hotels.findFirst({
-        where: eq(hotels.ownerProfileId, ctx.user.id),
+      const { error } = await ctx.supabase.rpc("adjust_room_availability", {
+        p_room: input.roomId,
+        p_delta: input.delta,
       });
-      if (!hotel) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
-      }
-
-      const room = await db.query.roomTypes.findFirst({
-        where: and(eq(roomTypes.id, input.roomId), eq(roomTypes.hotelId, hotel.id)),
-      });
-      if (!room) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "ROOM_NOT_FOUND" });
-      }
-
-      const newCount = room.availableCount + input.delta;
-      if (newCount < 0 || newCount > room.totalCapacity) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "AVAILABILITY_OUT_OF_RANGE" });
-      }
-
-      await db
-        .update(roomTypes)
-        .set({ availableCount: newCount, updatedAt: new Date() })
-        .where(eq(roomTypes.id, input.roomId));
-
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
       return { success: true };
     }),
 
   toggleRoomActive: hotelQuery
-    .input(z.object({ roomId: z.number() }))
+    .input(z.object({ roomId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
+      const hotel = await getOwnedHotel(ctx);
+      if (!hotel) throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
 
-      const hotel = await db.query.hotels.findFirst({
-        where: eq(hotels.ownerProfileId, ctx.user.id),
-      });
-      if (!hotel) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
-      }
+      const { data: room, error: findError } = await ctx.supabase
+        .from("room_types")
+        .select("is_active")
+        .eq("id", input.roomId)
+        .eq("hotel_id", hotel.id)
+        .single();
+      if (findError || !room) throw new TRPCError({ code: "NOT_FOUND", message: "ROOM_NOT_FOUND" });
 
-      const room = await db.query.roomTypes.findFirst({
-        where: and(eq(roomTypes.id, input.roomId), eq(roomTypes.hotelId, hotel.id)),
-      });
-      if (!room) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "ROOM_NOT_FOUND" });
-      }
-
-      await db
-        .update(roomTypes)
-        .set({ isActive: !room.isActive, updatedAt: new Date() })
-        .where(eq(roomTypes.id, input.roomId));
-
-      return { success: true, isActive: !room.isActive };
+      const nextActive = !room.is_active;
+      const { error } = await ctx.supabase
+        .from("room_types")
+        .update({ is_active: nextActive })
+        .eq("id", input.roomId)
+        .eq("hotel_id", hotel.id);
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+      return { success: true, isActive: nextActive };
     }),
 
   getRequests: hotelQuery.query(async ({ ctx }) => {
-    const db = getDb();
-
-    const hotel = await db.query.hotels.findFirst({
-      where: eq(hotels.ownerProfileId, ctx.user.id),
-    });
+    const hotel = await getOwnedHotel(ctx);
     if (!hotel) return { pending: [], awaitingPayment: [], other: [] };
 
-    const allBookings = await db.query.bookings.findMany({
-      where: eq(bookings.hotelId, hotel.id),
-      with: {
-        agency: true,
-        roomType: true,
-      },
-      orderBy: [desc(bookings.createdAt)],
-    });
+    const { data, error } = await ctx.supabase
+      .from("bookings")
+      .select("*, agency:profiles(*), room_type:room_types(*)")
+      .eq("hotel_id", hotel.id)
+      .order("created_at", { ascending: false });
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
 
+    const all = camelize(data ?? []);
     return {
-      pending: allBookings.filter((b) => b.status === "pending_hotel"),
-      awaitingPayment: allBookings.filter((b) => b.status === "awaiting_offline_payment"),
-      other: allBookings.filter(
-        (b) => !["pending_hotel", "awaiting_offline_payment"].includes(b.status)
-      ),
+      pending: all.filter((booking: any) => booking.status === "pending_hotel"),
+      awaitingPayment: all.filter((booking: any) => booking.status === "awaiting_offline_payment"),
+      other: all.filter((booking: any) => !["pending_hotel", "awaiting_offline_payment"].includes(booking.status)),
     };
   }),
 
   updateSettings: hotelQuery
-    .input(
-      z.object({
-        offlinePaymentWindowHours: z.number().int().min(6).max(168).optional(),
-      })
-    )
+    .input(z.object({ offlinePaymentWindowHours: z.number().int().min(6).max(168).optional() }))
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
+      const hotel = await getOwnedHotel(ctx);
+      if (!hotel) throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
 
-      const hotel = await db.query.hotels.findFirst({
-        where: eq(hotels.ownerProfileId, ctx.user.id),
-      });
-      if (!hotel) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
-      }
-
-      await db
-        .update(hotels)
-        .set({
+      const { error } = await ctx.supabase
+        .from("hotels")
+        .update({
           ...(input.offlinePaymentWindowHours && {
-            offlinePaymentWindowHours: input.offlinePaymentWindowHours,
+            offline_payment_window_hours: input.offlinePaymentWindowHours,
           }),
-          updatedAt: new Date(),
         })
-        .where(eq(hotels.id, hotel.id));
-
+        .eq("id", hotel.id);
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
       return { success: true };
     }),
 });

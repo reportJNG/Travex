@@ -1,51 +1,31 @@
 import { z } from "zod";
-import * as cookie from "cookie";
-import { Session } from "@contracts/constants";
-import { getSessionCookieOptions } from "./lib/cookies";
-import { createRouter, publicQuery, authedQuery, approvedQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { users, profiles, businessDocuments } from "@db/schema";
-import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { hashPassword, verifyPassword } from "./lib/password";
-import { signSessionToken } from "./lib/session";
+import { createRouter, publicQuery, authedQuery, approvedQuery } from "./middleware";
+import {
+  clearSupabaseSessionCookies,
+  createSupabaseAdmin,
+  createSupabaseForToken,
+  profileToAppUser,
+  setSupabaseSessionCookies,
+} from "./lib/supabase";
 
-function setSessionCookie(ctx: { req: Request; resHeaders: Headers }, token: string) {
-  const opts = getSessionCookieOptions(ctx.req.headers);
-  ctx.resHeaders.append(
-    "set-cookie",
-    cookie.serialize(Session.cookieName, token, {
-      httpOnly: opts.httpOnly,
-      path: opts.path,
-      sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
-      secure: opts.secure,
-      maxAge: Session.maxAgeMs / 1000,
-    }),
-  );
+function normalizeAlgerianPhone(value: string) {
+  const compact = value.replace(/[\s().-]/g, "");
+  if (/^\+213[567]\d{8}$/.test(compact)) return compact;
+  if (/^213[567]\d{8}$/.test(compact)) return `+${compact}`;
+  if (/^0[567]\d{8}$/.test(compact)) return `+213${compact.slice(1)}`;
+  return null;
 }
 
 export const authRouter = createRouter({
-  me: authedQuery.query(async (opts) => {
-    const db = getDb();
-    const userWithProfile = await db.query.users.findFirst({
-      where: eq(users.id, opts.ctx.user.id),
-      with: { profile: true },
-    });
-    return userWithProfile ?? opts.ctx.user;
-  }),
+  me: authedQuery.query(({ ctx }) => ctx.user),
 
   logout: authedQuery.mutation(async ({ ctx }) => {
-    const opts = getSessionCookieOptions(ctx.req.headers);
-    ctx.resHeaders.append(
-      "set-cookie",
-      cookie.serialize(Session.cookieName, "", {
-        httpOnly: opts.httpOnly,
-        path: opts.path,
-        sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
-        secure: opts.secure,
-        maxAge: 0,
-      }),
-    );
+    const { accessToken } = ctx;
+    if (accessToken) {
+      await createSupabaseForToken(accessToken).auth.signOut();
+    }
+    clearSupabaseSessionCookies(ctx);
     return { success: true };
   }),
 
@@ -57,25 +37,20 @@ export const authRouter = createRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-      const user = await db.query.users.findFirst({
-        where: eq(users.email, input.email.toLowerCase()),
+      const supabase = createSupabaseForToken();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: input.email.toLowerCase(),
+        password: input.password,
       });
 
-      if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+      if (error || !data.session) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "INVALID_CREDENTIALS",
         });
       }
 
-      await db
-        .update(users)
-        .set({ lastSignInAt: new Date(), updatedAt: new Date() })
-        .where(eq(users.id, user.id));
-
-      const token = await signSessionToken({ userId: user.id });
-      setSessionCookie(ctx, token);
+      setSupabaseSessionCookies(ctx, data.session);
       return { success: true };
     }),
 
@@ -87,53 +62,70 @@ export const authRouter = createRouter({
         legalName: z.string().min(2),
         email: z.string().email(),
         password: z.string().min(8),
-        phone: z.string().regex(/^\+213[567]\d{8}$/),
+        phone: z.string().min(8),
         wilaya: z.number().int().min(1).max(58),
         taxId: z.string().optional(),
         licenseNumber: z.string().optional(),
         locale: z.enum(["fr", "ar", "en"]).default("fr"),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
-      const db = getDb();
-      const normalizedEmail = input.email.toLowerCase();
+      const admin = createSupabaseAdmin();
+      const normalizedEmail = input.email.trim().toLowerCase();
+      const normalizedPhone = normalizeAlgerianPhone(input.phone);
 
-      const existing = await db.query.users.findFirst({
-        where: eq(users.email, normalizedEmail),
-      });
-      if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "EMAIL_EXISTS" });
+      if (!normalizedPhone) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "PHONE_INVALID",
+        });
       }
 
       if (input.role === "hotel" && !input.taxId && !input.licenseNumber) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "TAX_OR_LICENSE_REQUIRED" });
       }
 
-      const passwordHash = await hashPassword(input.password);
-      const [createdUser] = await db.insert(users).values({
-        name: input.fullName,
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
         email: normalizedEmail,
-        passwordHash,
-        role: input.role,
-        status: "awaiting_review",
-      }).returning({ id: users.id });
-
-      if (!createdUser) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CREATE_USER_FAILED" });
-      }
-
-      await db.insert(profiles).values({
-        id: createdUser.id,
-        fullName: input.fullName,
-        legalName: input.legalName,
-        phone: input.phone,
-        wilayaCode: input.wilaya,
-        taxId: input.taxId || null,
-        licenseNumber: input.licenseNumber || null,
-        preferredLocale: input.locale,
+        password: input.password,
+        email_confirm: true,
+        user_metadata: {
+          full_name: input.fullName,
+          role: input.role,
+        },
       });
 
-      return { success: true, userId: createdUser.id };
+      if (createError || !created.user) {
+        const alreadyExists = createError?.message.toLowerCase().includes("already");
+        throw new TRPCError({
+          code: alreadyExists ? "CONFLICT" : "BAD_REQUEST",
+          message: alreadyExists ? "EMAIL_EXISTS" : createError?.message || "CREATE_USER_FAILED",
+        });
+      }
+
+      const { error: profileError } = await admin.from("profiles").insert({
+        id: created.user.id,
+        role: input.role,
+        status: "awaiting_review",
+        full_name: input.fullName.trim(),
+        legal_name: input.legalName.trim(),
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        wilaya_code: input.wilaya,
+        tax_id: input.taxId?.trim() || null,
+        license_number: input.licenseNumber?.trim() || null,
+        preferred_locale: input.locale,
+      });
+
+      if (profileError) {
+        await admin.auth.admin.deleteUser(created.user.id);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: profileError.message || "CREATE_PROFILE_FAILED",
+        });
+      }
+
+      return { success: true, userId: created.user.id };
     }),
 
   updateProfile: approvedQuery
@@ -142,48 +134,55 @@ export const authRouter = createRouter({
         fullName: z.string().min(3).optional(),
         phone: z.string().optional(),
         preferredLocale: z.enum(["fr", "ar", "en"]).optional(),
-      })
+      }),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-      await db
-        .update(profiles)
-        .set({
-          ...(input.fullName && { fullName: input.fullName }),
+      const { data, error } = await ctx.supabase
+        .from("profiles")
+        .update({
+          ...(input.fullName && { full_name: input.fullName }),
           ...(input.phone && { phone: input.phone }),
-          ...(input.preferredLocale && { preferredLocale: input.preferredLocale }),
-          updatedAt: new Date(),
+          ...(input.preferredLocale && { preferred_locale: input.preferredLocale }),
         })
-        .where(eq(profiles.id, ctx.user.id));
-      return { success: true };
+        .eq("id", ctx.user.id)
+        .select("*")
+        .single();
+
+      if (error || !data) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error?.message || "UPDATE_FAILED" });
+      }
+
+      return profileToAppUser(data);
     }),
 
-  uploadDocuments: approvedQuery
+  uploadDocuments: authedQuery
     .input(
       z.array(
         z.object({
           type: z.enum(["commercial_registry", "tax_card", "tourism_license", "other"]),
           storagePath: z.string(),
           originalName: z.string(),
-        })
-      )
+        }),
+      ),
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-
       const hasRegistry = input.some((d) => d.type === "commercial_registry");
       if (!hasRegistry) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "COMMERCIAL_REGISTRY_REQUIRED" });
       }
 
-      await db.insert(businessDocuments).values(
+      const { error } = await ctx.supabase.from("business_documents").insert(
         input.map((doc) => ({
-          profileId: ctx.user.id,
+          profile_id: ctx.user.id,
           type: doc.type,
-          storagePath: doc.storagePath,
-          originalName: doc.originalName,
-        }))
+          storage_path: doc.storagePath,
+          original_name: doc.originalName,
+        })),
       );
+
+      if (error) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+      }
 
       return { success: true };
     }),
