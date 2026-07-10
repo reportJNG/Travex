@@ -15,25 +15,60 @@ import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
 type NotifStyle = { icon: React.ElementType; bg: string; text: string };
 
 const NOTIFICATION_STYLE: Record<string, NotifStyle> = {
-  booking_request: { icon: CalendarCheck, bg: "bg-primary/10", text: "text-primary" },
+  booking_request: {
+    icon: CalendarCheck,
+    bg: "bg-primary/10",
+    text: "text-primary",
+  },
   booking_rejected: { icon: XCircle, bg: "bg-rose-100", text: "text-rose-600" },
-  payment_window_started: { icon: CreditCard, bg: "bg-sky-100", text: "text-sky-600" },
-  payment_received: { icon: BadgeCheck, bg: "bg-emerald-100", text: "text-emerald-600" },
-  online_confirmed: { icon: BadgeCheck, bg: "bg-emerald-100", text: "text-emerald-600" },
-  account_approved: { icon: ShieldAlert, bg: "bg-emerald-100", text: "text-emerald-600" },
-  account_rejected: { icon: ShieldAlert, bg: "bg-rose-100", text: "text-rose-600" },
-  invoice_issued: { icon: FileText, bg: "bg-amber-100", text: "text-amber-600" },
-  claim_decided: { icon: Building2, bg: "bg-violet-100", text: "text-violet-600" },
+  payment_window_started: {
+    icon: CreditCard,
+    bg: "bg-sky-100",
+    text: "text-sky-600",
+  },
+  payment_received: {
+    icon: BadgeCheck,
+    bg: "bg-emerald-100",
+    text: "text-emerald-600",
+  },
+  online_confirmed: {
+    icon: BadgeCheck,
+    bg: "bg-emerald-100",
+    text: "text-emerald-600",
+  },
+  account_approved: {
+    icon: ShieldAlert,
+    bg: "bg-emerald-100",
+    text: "text-emerald-600",
+  },
+  account_rejected: {
+    icon: ShieldAlert,
+    bg: "bg-rose-100",
+    text: "text-rose-600",
+  },
+  invoice_issued: {
+    icon: FileText,
+    bg: "bg-amber-100",
+    text: "text-amber-600",
+  },
+  claim_decided: {
+    icon: Building2,
+    bg: "bg-violet-100",
+    text: "text-violet-600",
+  },
 };
 
-const DEFAULT_STYLE: NotifStyle = { icon: Bell, bg: "bg-muted", text: "text-muted-foreground" };
+const DEFAULT_STYLE: NotifStyle = {
+  icon: Bell,
+  bg: "bg-muted",
+  text: "text-muted-foreground",
+};
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -47,12 +82,22 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-function getNotificationDetail(type: string, data: Record<string, unknown>): string | null {
-  const ref = typeof data.reference === "string" ? `Ref: ${data.reference}` : null;
+function getNotificationDetail(
+  type: string,
+  data: Record<string, unknown>
+): string | null {
+  const ref =
+    typeof data.reference === "string" ? `Ref: ${data.reference}` : null;
   const hotel = typeof data.hotelName === "string" ? data.hotelName : null;
   const period = typeof data.period === "string" ? data.period : null;
 
-  if (type === "booking_request" || type === "booking_rejected" || type === "payment_window_started" || type === "payment_received" || type === "online_confirmed") {
+  if (
+    type === "booking_request" ||
+    type === "booking_rejected" ||
+    type === "payment_window_started" ||
+    type === "payment_received" ||
+    type === "online_confirmed"
+  ) {
     return [ref, hotel].filter(Boolean).join(" · ");
   }
   if (type === "invoice_issued") {
@@ -80,7 +125,7 @@ export default function Notifications() {
     },
   });
 
-  const unreadCount = notifications?.filter((n) => !n.readAt).length || 0;
+  const unreadCount = notifications?.filter(n => !n.readAt).length || 0;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -90,7 +135,11 @@ export default function Notifications() {
         description="Booking, payment, account, invoice, and claim updates."
         actions={
           unreadCount > 0 ? (
-            <Button variant="outline" onClick={() => markAllRead.mutate()} disabled={markAllRead.isPending}>
+            <Button
+              variant="outline"
+              onClick={() => markAllRead.mutate()}
+              disabled={markAllRead.isPending}
+            >
               <Check className="me-2 h-4 w-4" />
               {t("notifications.markAllRead")}
             </Button>
@@ -112,18 +161,23 @@ export default function Notifications() {
             </div>
           ) : notifications && notifications.length > 0 ? (
             <div className="divide-y">
-              {notifications.map((notification, index) => {
+              {notifications.map(notification => {
                 let payload: Record<string, unknown> = {};
                 try {
-                  payload = typeof notification.data === "string"
-                    ? JSON.parse(notification.data)
-                    : (notification.data as Record<string, unknown>) || {};
+                  payload =
+                    typeof notification.data === "string"
+                      ? JSON.parse(notification.data)
+                      : (notification.data as Record<string, unknown>) || {};
                 } catch {
                   payload = {};
                 }
                 const isUnread = !notification.readAt;
-                const detail = getNotificationDetail(notification.type, payload);
-                const style = NOTIFICATION_STYLE[notification.type] ?? DEFAULT_STYLE;
+                const detail = getNotificationDetail(
+                  notification.type,
+                  payload
+                );
+                const style =
+                  NOTIFICATION_STYLE[notification.type] ?? DEFAULT_STYLE;
                 const Icon = style.icon;
 
                 return (
@@ -134,7 +188,8 @@ export default function Notifications() {
                       isUnread ? "bg-primary/5" : ""
                     }`}
                     onClick={() => {
-                      if (isUnread) markRead.mutate({ notificationId: notification.id });
+                      if (isUnread)
+                        markRead.mutate({ notificationId: notification.id });
                     }}
                   >
                     <span
@@ -145,14 +200,17 @@ export default function Notifications() {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="truncate text-sm font-medium text-foreground">
-                          {t(`notifications.${notification.type}`) || notification.type}
+                          {t(`notifications.${notification.type}`) ||
+                            notification.type}
                         </span>
                         <span className="shrink-0 text-xs text-muted-foreground">
                           {timeAgo(notification.createdAt)}
                         </span>
                       </span>
                       {detail ? (
-                        <span className="mt-0.5 block text-xs text-muted-foreground">{detail}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {detail}
+                        </span>
                       ) : null}
                       {isUnread ? (
                         <span className="mt-1 block text-xs font-medium text-primary">
@@ -161,7 +219,10 @@ export default function Notifications() {
                       ) : null}
                     </span>
                     {isUnread ? (
-                      <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />
+                      <span
+                        className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-primary"
+                        aria-label="Unread"
+                      />
                     ) : null}
                   </button>
                 );

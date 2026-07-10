@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Travex">
+  <circle cx="128" cy="61" r="43" fill="#222c4f" opacity="0.15"/>
+  <circle cx="63" cy="191" r="43" fill="#222c4f" opacity="0.15"/>
+  <circle cx="193" cy="191" r="43" fill="#222c4f" opacity="0.15"/>
+  <path d="M128 51 207 205H49L128 51Z" fill="none" stroke="#222c4f" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

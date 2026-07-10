@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
@@ -29,11 +28,13 @@ function GenerateInvoicesForm() {
   const utils = trpc.useUtils();
 
   const generateMutation = trpc.admin.generateInvoices.useMutation({
-    onSuccess: (data) => {
-      toast.success(`Generated ${data.count} invoice${data.count !== 1 ? "s" : ""}`);
+    onSuccess: data => {
+      toast.success(
+        `Generated ${data.count} invoice${data.count !== 1 ? "s" : ""}`
+      );
       utils.admin.listInvoices.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   return (
@@ -51,7 +52,9 @@ function GenerateInvoicesForm() {
             <Input
               type="number"
               value={year}
-              onChange={(e) => setYear(parseInt(e.target.value) || now.getFullYear())}
+              onChange={e =>
+                setYear(parseInt(e.target.value) || now.getFullYear())
+              }
               className="w-28"
               min={2024}
               max={2030}
@@ -62,7 +65,11 @@ function GenerateInvoicesForm() {
             <Input
               type="number"
               value={month}
-              onChange={(e) => setMonth(Math.min(12, Math.max(1, parseInt(e.target.value) || 1)))}
+              onChange={e =>
+                setMonth(
+                  Math.min(12, Math.max(1, parseInt(e.target.value) || 1))
+                )
+              }
               className="w-20"
               min={1}
               max={12}
@@ -75,13 +82,16 @@ function GenerateInvoicesForm() {
             onConfirm={() => generateMutation.mutate({ year, month })}
           >
             <Button disabled={generateMutation.isPending}>
-              <RefreshCw className={`me-2 h-4 w-4 ${generateMutation.isPending ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`me-2 h-4 w-4 ${generateMutation.isPending ? "animate-spin" : ""}`}
+              />
               Generate invoices
             </Button>
           </ConfirmAction>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Generates commission invoices at 5% rate for all confirmed bookings in the selected period.
+          Generates commission invoices at 5% rate for all confirmed bookings in
+          the selected period.
         </p>
       </CardContent>
     </Card>
@@ -98,7 +108,7 @@ function MarkPaidDialog({ invoice }: { invoice: Record<string, unknown> }) {
       utils.admin.listInvoices.invalidate();
       setPaymentRef("");
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   if (invoice.status !== "unpaid" && invoice.status !== "overdue") return null;
@@ -111,7 +121,7 @@ function MarkPaidDialog({ invoice }: { invoice: Record<string, unknown> }) {
           <Input
             placeholder="CCP/CIB transfer reference..."
             value={paymentRef}
-            onChange={(e) => setPaymentRef(e.target.value)}
+            onChange={e => setPaymentRef(e.target.value)}
           />
         </div>
         <ConfirmAction
@@ -123,7 +133,10 @@ function MarkPaidDialog({ invoice }: { invoice: Record<string, unknown> }) {
               toast.error("Payment reference is required");
               return;
             }
-            markPaid.mutate({ invoiceId: invoice.id as string, paymentReference: paymentRef.trim() });
+            markPaid.mutate({
+              invoiceId: invoice.id as string,
+              paymentReference: paymentRef.trim(),
+            });
           }}
         >
           <Button size="sm" disabled={markPaid.isPending || !paymentRef.trim()}>
@@ -140,9 +153,18 @@ export default function AdminInvoices() {
   const { t } = useI18n();
   const { data: invoices, isLoading } = trpc.admin.listInvoices.useQuery();
 
-  const totalUnpaid = invoices?.filter((inv: any) => inv.status === "unpaid").reduce((s: number, inv: any) => s + Number(inv.commissionDue), 0) ?? 0;
-  const totalOverdue = invoices?.filter((inv: any) => inv.status === "overdue").reduce((s: number, inv: any) => s + Number(inv.commissionDue), 0) ?? 0;
-  const totalPaid = invoices?.filter((inv: any) => inv.status === "paid").reduce((s: number, inv: any) => s + Number(inv.commissionDue), 0) ?? 0;
+  const totalUnpaid =
+    invoices
+      ?.filter((inv: any) => inv.status === "unpaid")
+      .reduce((s: number, inv: any) => s + Number(inv.commissionDue), 0) ?? 0;
+  const totalOverdue =
+    invoices
+      ?.filter((inv: any) => inv.status === "overdue")
+      .reduce((s: number, inv: any) => s + Number(inv.commissionDue), 0) ?? 0;
+  const totalPaid =
+    invoices
+      ?.filter((inv: any) => inv.status === "paid")
+      .reduce((s: number, inv: any) => s + Number(inv.commissionDue), 0) ?? 0;
 
   return (
     <div>
@@ -180,7 +202,7 @@ export default function AdminInvoices() {
           </div>
 
           <div className="space-y-3">
-            {(invoices as Record<string, unknown>[]).map((inv) => {
+            {(invoices as Record<string, unknown>[]).map(inv => {
               const hotel = inv.hotel as Record<string, unknown> | undefined;
               const period = `${inv.periodYear}-${String(inv.periodMonth).padStart(2, "0")}`;
               return (
@@ -193,39 +215,66 @@ export default function AdminInvoices() {
                             <Building2 className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate font-semibold">{(hotel?.name as string) || "Unknown hotel"}</h3>
-                            <p className="text-xs text-muted-foreground">{period}</p>
+                            <h3 className="truncate font-semibold">
+                              {(hotel?.name as string) || "Unknown hotel"}
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                              {period}
+                            </p>
                           </div>
                         </div>
                         <div className="grid gap-3 text-sm sm:grid-cols-3">
                           <div>
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">Bookings total</span>
-                            <p className="mt-0.5 font-semibold">{Number(inv.bookingsTotal).toLocaleString()} DZD</p>
+                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Bookings total
+                            </span>
+                            <p className="mt-0.5 font-semibold">
+                              {Number(inv.bookingsTotal).toLocaleString()} DZD
+                            </p>
                           </div>
                           <div>
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">Commission (5%)</span>
-                            <p className="mt-0.5 font-semibold text-primary">{Number(inv.commissionDue).toLocaleString()} DZD</p>
+                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Commission (5%)
+                            </span>
+                            <p className="mt-0.5 font-semibold text-primary">
+                              {Number(inv.commissionDue).toLocaleString()} DZD
+                            </p>
                           </div>
                           <div>
-                            <span className="text-xs uppercase tracking-wide text-muted-foreground">Due date</span>
-                            <p className="mt-0.5 font-semibold">{inv.dueDate as string}</p>
+                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Due date
+                            </span>
+                            <p className="mt-0.5 font-semibold">
+                              {inv.dueDate as string}
+                            </p>
                           </div>
                           {inv.paidAt ? (
                             <div>
-                              <span className="text-xs uppercase tracking-wide text-muted-foreground">Paid at</span>
-                              <p className="mt-0.5 font-semibold">{new Date(inv.paidAt as string).toLocaleDateString()}</p>
+                              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Paid at
+                              </span>
+                              <p className="mt-0.5 font-semibold">
+                                {new Date(
+                                  inv.paidAt as string
+                                ).toLocaleDateString()}
+                              </p>
                             </div>
                           ) : null}
                           {inv.paymentReference ? (
                             <div>
-                              <span className="text-xs uppercase tracking-wide text-muted-foreground">Payment ref</span>
-                              <p className="mt-0.5 font-mono text-xs">{inv.paymentReference as string}</p>
+                              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                                Payment ref
+                              </span>
+                              <p className="mt-0.5 font-mono text-xs">
+                                {inv.paymentReference as string}
+                              </p>
                             </div>
                           ) : null}
                         </div>
                       </div>
                       <StatusBadge status={inv.status as string}>
-                        {t(`invoices.status.${inv.status as string}`) || inv.status as string}
+                        {t(`invoices.status.${inv.status as string}`) ||
+                          (inv.status as string)}
                       </StatusBadge>
                     </div>
                     <MarkPaidDialog invoice={inv} />

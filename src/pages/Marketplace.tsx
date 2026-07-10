@@ -30,7 +30,10 @@ function Stars({ count }: { count?: number | null }) {
   return (
     <div className="flex items-center gap-0.5">
       {Array.from({ length: count }).map((_, index) => (
-        <Star key={index} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+        <Star
+          key={index}
+          className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+        />
       ))}
     </div>
   );
@@ -59,8 +62,8 @@ export default function Marketplace() {
   const { data: allAmenities } = trpc.marketplace.listAmenities.useQuery();
 
   const toggleAmenity = (key: string) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    setSelectedAmenities(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   };
 
@@ -72,7 +75,12 @@ export default function Marketplace() {
     setSelectedAmenities([]);
   };
 
-  const hasFilters = wilayaFilter || starsFilter || minPrice || maxPrice || selectedAmenities.length;
+  const hasFilters =
+    wilayaFilter ||
+    starsFilter ||
+    minPrice ||
+    maxPrice ||
+    selectedAmenities.length;
 
   const filterControls = (
     <div className="space-y-5">
@@ -80,14 +88,16 @@ export default function Marketplace() {
         <Label>{t("marketplace.wilaya")}</Label>
         <Select
           value={wilayaFilter ? String(wilayaFilter) : "all"}
-          onValueChange={(value) => setWilayaFilter(value === "all" ? undefined : Number(value))}
+          onValueChange={value =>
+            setWilayaFilter(value === "all" ? undefined : Number(value))
+          }
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={t("marketplace.allWilayas")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("marketplace.allWilayas")}</SelectItem>
-            {wilayas?.map((wilaya) => (
+            {wilayas?.map(wilaya => (
               <SelectItem key={wilaya.code} value={String(wilaya.code)}>
                 {wilaya.code} - {wilaya.nameFr}
               </SelectItem>
@@ -99,14 +109,16 @@ export default function Marketplace() {
       <div className="space-y-2">
         <Label>{t("marketplace.stars")}</Label>
         <div className="grid grid-cols-5 gap-1.5">
-          {[1, 2, 3, 4, 5].map((stars) => (
+          {[1, 2, 3, 4, 5].map(stars => (
             <Button
               key={stars}
               type="button"
               variant={starsFilter === stars ? "default" : "outline"}
               size="sm"
               className="px-0"
-              onClick={() => setStarsFilter(starsFilter === stars ? undefined : stars)}
+              onClick={() =>
+                setStarsFilter(starsFilter === stars ? undefined : stars)
+              }
             >
               {stars}★
             </Button>
@@ -123,7 +135,7 @@ export default function Marketplace() {
               type="number"
               placeholder="0"
               value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
+              onChange={e => setMinPrice(e.target.value)}
               min={0}
             />
           </div>
@@ -133,7 +145,7 @@ export default function Marketplace() {
               type="number"
               placeholder="∞"
               value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
+              onChange={e => setMaxPrice(e.target.value)}
               min={0}
             />
           </div>
@@ -166,11 +178,7 @@ export default function Marketplace() {
       ) : null}
 
       {hasFilters ? (
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={clearFilters}
-        >
+        <Button variant="outline" className="w-full" onClick={clearFilters}>
           <X className="me-2 h-4 w-4" />
           Clear all filters
         </Button>
@@ -192,12 +200,22 @@ export default function Marketplace() {
                 {t("filter")}
                 {hasFilters ? (
                   <span className="absolute -end-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    {[wilayaFilter, starsFilter, minPrice || maxPrice, ...selectedAmenities].filter(Boolean).length}
+                    {
+                      [
+                        wilayaFilter,
+                        starsFilter,
+                        minPrice || maxPrice,
+                        ...selectedAmenities,
+                      ].filter(Boolean).length
+                    }
                   </span>
                 ) : null}
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+            <SheetContent
+              side="bottom"
+              className="max-h-[85vh] overflow-y-auto"
+            >
               <SheetHeader>
                 <SheetTitle>{t("filter")}</SheetTitle>
               </SheetHeader>
@@ -212,7 +230,7 @@ export default function Marketplace() {
           <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={event => setSearch(event.target.value)}
             placeholder={t("marketplace.search")}
             className="h-11 ps-9"
           />
@@ -234,8 +252,11 @@ export default function Marketplace() {
             <div className="flex flex-wrap gap-1.5">
               {wilayaFilter && wilayas ? (
                 <Badge variant="secondary" className="gap-1">
-                  {wilayas.find((w) => w.code === wilayaFilter)?.nameFr}
-                  <button type="button" onClick={() => setWilayaFilter(undefined)}>
+                  {wilayas.find(w => w.code === wilayaFilter)?.nameFr}
+                  <button
+                    type="button"
+                    onClick={() => setWilayaFilter(undefined)}
+                  >
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
@@ -243,12 +264,15 @@ export default function Marketplace() {
               {starsFilter ? (
                 <Badge variant="secondary" className="gap-1">
                   {starsFilter}★
-                  <button type="button" onClick={() => setStarsFilter(undefined)}>
+                  <button
+                    type="button"
+                    onClick={() => setStarsFilter(undefined)}
+                  >
                     <X className="h-3 w-3" />
                   </button>
                 </Badge>
               ) : null}
-              {selectedAmenities.map((key) => {
+              {selectedAmenities.map(key => {
                 const amenity = allAmenities?.find((a: any) => a.key === key);
                 return (
                   <Badge key={key} variant="secondary" className="gap-1">
@@ -267,53 +291,81 @@ export default function Marketplace() {
           ) : hotels && hotels.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {hotels.map((hotel: Record<string, unknown>) => {
-                const photos = (hotel.photos || []) as Array<{ storagePath: string }>;
-                const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr?: string } }>;
+                const photos = (hotel.photos || []) as Array<{
+                  storagePath: string;
+                }>;
+                const amenities = (hotel.amenities || []) as Array<{
+                  amenity: { key: string; labelFr?: string };
+                }>;
                 const totalAvailable = (hotel.totalAvailable as number) || 0;
                 const isSeeded = hotel.isSeeded as boolean;
                 const minRate = hotel.minRate ? Number(hotel.minRate) : null;
+                const hotelHref = `/hotel/${hotel.id as string}`;
                 return (
-                  <Card key={hotel.id as string} className="group overflow-hidden transition-shadow hover:shadow-md">
-                    <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-                      {photos[0]?.storagePath ? (
-                        <img
-                          src={photos[0].storagePath}
-                          alt={hotel.name as string}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-slate-200">
-                          <MapPin className="h-12 w-12 text-muted-foreground" />
+                  <Card
+                    key={hotel.id as string}
+                    className="group overflow-hidden transition-shadow hover:shadow-md"
+                  >
+                    <Link to={hotelHref} className="block">
+                      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+                        {photos[0]?.storagePath ? (
+                          <img
+                            src={photos[0].storagePath}
+                            alt={hotel.name as string}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-slate-200">
+                            <MapPin className="h-12 w-12 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="absolute left-3 top-3 flex gap-2">
+                          {isSeeded ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {t("marketplace.seeded")}
+                            </Badge>
+                          ) : null}
                         </div>
-                      )}
-                      <div className="absolute left-3 top-3 flex gap-2">
-                        {isSeeded ? <Badge variant="secondary" className="text-xs">{t("marketplace.seeded")}</Badge> : null}
+                        {(hotel.starRating as number) ? (
+                          <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 shadow-sm">
+                            <Stars
+                              count={(hotel.starRating as number) || null}
+                            />
+                          </div>
+                        ) : null}
                       </div>
-                      {(hotel.starRating as number) ? (
-                        <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 shadow-sm">
-                          <Stars count={(hotel.starRating as number) || null} />
-                        </div>
-                      ) : null}
-                    </div>
+                    </Link>
                     <CardContent className="p-4">
                       <div className="min-w-0">
-                        <h3 className="truncate font-semibold">{hotel.name as string}</h3>
+                        <Link to={hotelHref} className="hover:text-primary">
+                          <h3 className="truncate font-semibold transition-colors">
+                            {hotel.name as string}
+                          </h3>
+                        </Link>
                         <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
                           <span className="truncate">
-                            {(hotel.wilaya as Record<string, string>)?.nameFr || "Algeria"}
+                            {(hotel.wilaya as Record<string, string>)?.nameFr ||
+                              "Algeria"}
                           </span>
                         </p>
                       </div>
                       {amenities.length > 0 ? (
                         <div className="mt-3 flex min-h-7 flex-wrap gap-1.5">
-                          {amenities.slice(0, 3).map((item) => (
-                            <Badge key={item.amenity.key} variant="secondary" className="text-xs font-normal">
+                          {amenities.slice(0, 3).map(item => (
+                            <Badge
+                              key={item.amenity.key}
+                              variant="secondary"
+                              className="text-xs font-normal"
+                            >
                               {item.amenity.labelFr}
                             </Badge>
                           ))}
                           {amenities.length > 3 ? (
-                            <Badge variant="outline" className="text-xs font-normal">
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-normal"
+                            >
                               +{amenities.length - 3}
                             </Badge>
                           ) : null}
@@ -325,14 +377,28 @@ export default function Marketplace() {
                         <div className="min-w-0">
                           {minRate ? (
                             <p className="text-sm">
-                              <span className="text-muted-foreground">{t("marketplace.from")} </span>
-                              <span className="font-semibold text-primary">{minRate.toLocaleString()} DZD</span>
-                              <span className="text-xs text-muted-foreground">{t("marketplace.perNight")}</span>
+                              <span className="text-muted-foreground">
+                                {t("marketplace.from")}{" "}
+                              </span>
+                              <span className="font-semibold text-primary">
+                                {minRate.toLocaleString()} DZD
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {t("marketplace.perNight")}
+                              </span>
                             </p>
                           ) : (
-                            <p className="text-sm text-muted-foreground">No rates yet</p>
+                            <p className="text-sm text-muted-foreground">
+                              No rates yet
+                            </p>
                           )}
-                          <p className={totalAvailable > 0 ? "text-xs text-emerald-600" : "text-xs text-muted-foreground"}>
+                          <p
+                            className={
+                              totalAvailable > 0
+                                ? "text-xs text-emerald-600"
+                                : "text-xs text-muted-foreground"
+                            }
+                          >
                             {totalAvailable > 0
                               ? `${totalAvailable} ${t("marketplace.available")}`
                               : "No availability"}
@@ -340,7 +406,9 @@ export default function Marketplace() {
                         </div>
                         <Button size="sm" asChild className="shrink-0">
                           <Link to={`/hotel/${hotel.id}`}>
-                            {isSeeded ? t("marketplace.viewDetails") : t("marketplace.book")}
+                            {isSeeded
+                              ? t("marketplace.viewDetails")
+                              : t("marketplace.book")}
                           </Link>
                         </Button>
                       </div>

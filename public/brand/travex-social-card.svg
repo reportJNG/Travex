@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Travex — Travel Excellence">
+  <defs>
+    <linearGradient id="bg" x1="70" y1="20" x2="1100" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17213e"/>
+      <stop offset="0.58" stop-color="#222c4f"/>
+      <stop offset="1" stop-color="#34456d"/>
+    </linearGradient>
+    <linearGradient id="top" x1="115" y1="95" x2="285" y2="250" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5ab89e"/><stop offset="0.5" stop-color="#5e9ccd"/><stop offset="1" stop-color="#9c72be"/>
+    </linearGradient>
+    <linearGradient id="left" x1="52" y1="306" x2="212" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#76c899"/><stop offset="0.52" stop-color="#54b0a4"/><stop offset="1" stop-color="#5e9ccd"/>
+    </linearGradient>
+    <linearGradient id="right" x1="259" y1="306" x2="423" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5c07e"/><stop offset="0.52" stop-color="#f3996e"/><stop offset="1" stop-color="#d46799"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(980 95) rotate(132) scale(580 430)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5ab89e" stop-opacity="0.24"/>
+      <stop offset="0.58" stop-color="#9c72be" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#222c4f" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" rx="42" fill="url(#bg)"/>
+  <rect width="1200" height="630" rx="42" fill="url(#glow)"/>
+  <circle cx="219" cy="171" r="76" fill="url(#top)"/>
+  <circle cx="113" cy="383" r="76" fill="url(#left)"/>
+  <circle cx="325" cy="383" r="76" fill="url(#right)"/>
+  <path d="M219 152 347 407H91L219 152Z" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="475" y="290" fill="#fff" font-family="Manrope, Montserrat, Arial, sans-serif" font-size="112" font-weight="800" letter-spacing="11">TRAVEX</text>
+  <text x="482" y="367" fill="#b9c5d9" font-family="Manrope, Arial, sans-serif" font-size="38" font-weight="500" letter-spacing="3">TRAVEL EXCELLENCE</text>
+  <text x="482" y="440" fill="#78c5b0" font-family="Manrope, Arial, sans-serif" font-size="26" font-weight="600">Algeria's verified B2B hotel marketplace</text>
+</svg>

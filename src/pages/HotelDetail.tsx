@@ -81,7 +81,13 @@ export default function HotelDetail() {
   const createBooking = trpc.booking.create.useMutation({
     onSuccess: (data) => {
       toast.success(`${t("booking.success")} — Ref: ${data.reference || "pending"}`);
-      navigate("/dashboard");
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else if (paymentMethod === "offline") {
+        navigate(`/booking/${data.bookingId}/offline-payment`);
+      } else {
+        navigate(`/booking/${data.bookingId}/payment-result`);
+      }
     },
     onError: (err) => toast.error(err.message),
   });

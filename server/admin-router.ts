@@ -164,6 +164,68 @@ export const adminRouter = createRouter({
       return { success: true, count: Number(data ?? 0) };
     }),
 
+  listPaymentVerifications: adminQuery
+    .input(
+      z.object({
+        page: z.number().default(1),
+        limit: z.number().default(20),
+        status: z.enum(["awaiting_admin_payment_verification", "all"]).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      let query = ctx.supabase
+        .from("bookings")
+        .select("*, agency:profiles(*), hotel:hotels(*, wilaya:wilayas(*))")
+        .eq("payment_method", "offline")
+        .not("voucher_path", "is", null)
+        .order("created_at", { ascending: false });
+
+      if (input.status && input.status !== "all") {
+        query = query.eq("status", input.status);
+      } else {
+        query = query.in("status", ["awaiting_offline_payment", "confirmed", "rejected", "expired"]);
+      }
+
+      const { data, error } = await query;
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+      return camelize(data ?? []);
+    }),
+
+  verifyPayment: adminQuery
+    .input(
+      z.object({
+        bookingId: z.string().uuid(),
+        approve: z.boolean(),
+        reason: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.approve) {
+        const { error } = await ctx.supabase.rpc("admin_approve_offline_payment", {
+          p_booking: input.bookingId,
+          p_admin: ctx.user.id,
+        });
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+      } else {
+        const { error } = await ctx.supabase.rpc("admin_reject_offline_payment", {
+          p_booking: input.bookingId,
+          p_admin: ctx.user.id,
+          p_reason: input.reason ?? null,
+        });
+        if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+      }
+
+      await ctx.supabase.from("audit_logs").insert({
+        actor_id: ctx.user.id,
+        action: input.approve ? "payment.approve_offline" : "payment.reject_offline",
+        target_type: "booking",
+        target_id: input.bookingId,
+        metadata: { reason: input.reason ?? null },
+      });
+
+      return { success: true };
+    }),
+
   listAuditLogs: adminQuery
     .input(z.object({ page: z.number().default(1), limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Travex</title>
+  <desc id="desc">Three colorful destinations connected by a triangular travel route.</desc>
+  <defs>
+    <linearGradient id="top-node" x1="68" y1="22" x2="170" y2="115" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5ab89e"/>
+      <stop offset="0.48" stop-color="#5e9ccd"/>
+      <stop offset="1" stop-color="#9c72be"/>
+    </linearGradient>
+    <linearGradient id="left-node" x1="18" y1="144" x2="115" y2="236" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#76c899"/>
+      <stop offset="0.52" stop-color="#54b0a4"/>
+      <stop offset="1" stop-color="#5e9ccd"/>
+    </linearGradient>
+    <linearGradient id="right-node" x1="147" y1="144" x2="242" y2="235" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f5c07e"/>
+      <stop offset="0.52" stop-color="#f3996e"/>
+      <stop offset="1" stop-color="#d46799"/>
+    </linearGradient>
+    <filter id="node-shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#222c4f" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <g filter="url(#node-shadow)">
+    <circle cx="128" cy="61" r="46" fill="url(#top-node)"/>
+    <circle cx="63" cy="191" r="46" fill="url(#left-node)"/>
+    <circle cx="193" cy="191" r="46" fill="url(#right-node)"/>
+  </g>
+  <path d="M128 51 207 205H49L128 51Z" fill="none" stroke="#222c4f" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

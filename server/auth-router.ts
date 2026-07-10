@@ -141,7 +141,7 @@ export const authRouter = createRouter({
         .from("profiles")
         .update({
           ...(input.fullName && { full_name: input.fullName }),
-          ...(input.phone && { phone: input.phone }),
+          ...(input.phone !== undefined && { phone: input.phone || null }),
           ...(input.preferredLocale && { preferred_locale: input.preferredLocale }),
         })
         .eq("id", ctx.user.id)

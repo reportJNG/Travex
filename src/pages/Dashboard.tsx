@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { Archive, BadgeCheck, CalendarCheck, Clock, Receipt } from "lucide-react";
+import { Link, useNavigate } from "react-router";
+import { AlertCircle, Archive, BadgeCheck, CalendarCheck, Clock, Receipt, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatCard } from "@/components/app/StatCard";
 import { StatusBadge } from "@/components/app/StatusBadge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,7 +34,9 @@ const STATUS_TABS = [
 
 export default function Dashboard() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>("all");
+
   const { data: bookings, isLoading, refetch } = trpc.booking.myBookings.useQuery();
   const archiveMutation = trpc.booking.archive.useMutation({
     onSuccess: () => { toast.success("Archived"); refetch(); },
@@ -46,9 +49,18 @@ export default function Dashboard() {
     confirmed: bookings?.filter((b) => ["confirmed", "completed"].includes(b.status)).length || 0,
   };
 
+  const awaitingPaymentBookings = bookings?.filter((b) => b.status === "awaiting_offline_payment") ?? [];
+
   const filtered = activeTab === "all"
     ? bookings
     : bookings?.filter((b) => b.status === activeTab);
+
+  function openReceiptSheet(bookingId?: string) {
+    const bid = bookingId ?? awaitingPaymentBookings[0]?.id ?? "";
+    if (bid) {
+      navigate(`/booking/${bid}/offline-payment`);
+    }
+  }
 
   return (
     <div>
@@ -58,6 +70,30 @@ export default function Dashboard() {
         description="Track booking status, payment actions, and archived requests across your agency workspace."
         actions={<Button asChild><Link to="/marketplace">Browse marketplace</Link></Button>}
       />
+
+      {/* Awaiting offline payment alert */}
+      {awaitingPaymentBookings.length > 0 ? (
+        <Alert className="mb-6 border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle className="font-semibold">
+            Payment Required
+          </AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              You have <strong>{awaitingPaymentBookings.length}</strong> booking{awaitingPaymentBookings.length !== 1 ? "s" : ""} awaiting offline payment.
+              You must upload payment receipts within <strong>48 hours</strong> to avoid automatic cancellation.
+            </span>
+            <Button
+              size="sm"
+              className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={() => openReceiptSheet()}
+            >
+              <Upload className="me-1.5 h-3.5 w-3.5" />
+              Upload Receipt
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label={t("dashboard.totalBookings")} value={counts.total} icon={<CalendarCheck className="h-5 w-5" />} />
@@ -126,6 +162,16 @@ export default function Dashboard() {
                             </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1">
+                                {booking.status === "awaiting_offline_payment" ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                                    onClick={() => openReceiptSheet(booking.id)}
+                                  >
+                                    <Upload className="h-3.5 w-3.5" />
+                                  </Button>
+                                ) : null}
                                 {["rejected", "expired", "cancelled"].includes(booking.status) ? (
                                   <Button
                                     size="sm"
@@ -166,6 +212,16 @@ export default function Dashboard() {
                               <div className="text-xs text-muted-foreground">{booking.roomNameSnapshot} ×{booking.roomsCount}</div>
                             </div>
                           </div>
+                          {booking.status === "awaiting_offline_payment" ? (
+                            <Button
+                              size="sm"
+                              className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                              onClick={() => openReceiptSheet(booking.id)}
+                            >
+                              <Upload className="me-1.5 h-3.5 w-3.5" />
+                              Upload Receipt
+                            </Button>
+                          ) : null}
                           {["rejected", "expired", "cancelled"].includes(booking.status) ? (
                             <Button
                               size="sm"
@@ -195,6 +251,7 @@ export default function Dashboard() {
           </Tabs>
         </CardContent>
       </Card>
+
     </div>
   );
 }

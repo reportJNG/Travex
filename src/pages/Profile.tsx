@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Globe, Mail, Phone, Save, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
@@ -25,31 +25,30 @@ export default function Profile() {
   const { data: userData } = trpc.auth.me.useQuery();
   const profile = (userData as any)?.profile;
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [locale, setLocale] = useState<"fr" | "ar" | "en">(currentLocale);
-
-  useEffect(() => {
-    if (profile) {
-      setFullName(profile.fullName || (user as any)?.name || "");
-      setPhone(profile.phone || "");
-      setLocale((profile.preferredLocale as "fr" | "ar" | "en") || currentLocale);
-    }
-  }, [profile, user, currentLocale]);
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+  const [locale, setLocale] = useState<"fr" | "ar" | "en" | null>(null);
+  const effectiveFullName =
+    fullName ?? profile?.fullName ?? (user as any)?.name ?? "";
+  const effectivePhone = phone ?? profile?.phone ?? "";
+  const effectiveLocale =
+    locale ??
+    (profile?.preferredLocale as "fr" | "ar" | "en" | undefined) ??
+    currentLocale;
 
   const updateMutation = trpc.auth.updateProfile.useMutation({
     onSuccess: () => {
       toast.success("Profile updated");
       utils.auth.me.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: err => toast.error(err.message),
   });
 
   const handleSave = () => {
     updateMutation.mutate({
-      ...(fullName && { fullName }),
-      ...(phone && { phone }),
-      ...(locale && { preferredLocale: locale }),
+      fullName: effectiveFullName.trim() || undefined,
+      phone: effectivePhone || undefined,
+      preferredLocale: effectiveLocale,
     });
   };
 
@@ -72,7 +71,11 @@ export default function Profile() {
                 <UserCircle className="h-4 w-4 text-muted-foreground" />
                 Full name
               </Label>
-              <Input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder={profile?.fullName || (user as any)?.name || ""} />
+              <Input
+                value={effectiveFullName}
+                onChange={event => setFullName(event.target.value)}
+                placeholder={profile?.fullName || (user as any)?.name || ""}
+              />
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
@@ -86,14 +89,21 @@ export default function Profile() {
                 <Phone className="h-4 w-4 text-muted-foreground" />
                 Phone
               </Label>
-              <Input value={phone} onChange={(event) => setPhone(event.target.value)} placeholder={profile?.phone || "+213555123456"} />
+              <Input
+                value={effectivePhone}
+                onChange={event => setPhone(event.target.value)}
+                placeholder={profile?.phone || "+213555123456"}
+              />
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5">
                 <Globe className="h-4 w-4 text-muted-foreground" />
                 Preferred language
               </Label>
-              <Select value={locale} onValueChange={(value) => setLocale(value as typeof locale)}>
+              <Select
+                value={effectiveLocale}
+                onValueChange={value => setLocale(value as "fr" | "ar" | "en")}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -110,7 +120,9 @@ export default function Profile() {
             <div className="rounded-lg border bg-muted/40 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h3 className="text-sm font-semibold">Legal information</h3>
-                <StatusBadge status={(user as any)?.status || "approved"}>{t(`status.${(user as any)?.status || "approved"}`)}</StatusBadge>
+                <StatusBadge status={(user as any)?.status || "approved"}>
+                  {t(`status.${(user as any)?.status || "approved"}`)}
+                </StatusBadge>
               </div>
               <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <div>
@@ -119,7 +131,9 @@ export default function Profile() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Role</span>
-                  <p className="font-medium capitalize">{(user as any)?.role?.replace("_", " ")}</p>
+                  <p className="font-medium capitalize">
+                    {(user as any)?.role?.replace("_", " ")}
+                  </p>
                 </div>
                 {profile?.taxId ? (
                   <div>
@@ -137,7 +151,11 @@ export default function Profile() {
             </div>
           ) : null}
 
-          <Button className="w-full sm:w-auto" onClick={handleSave} disabled={updateMutation.isPending}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+          >
             <Save className="me-2 h-4 w-4" />
             {updateMutation.isPending ? "Saving..." : "Save changes"}
           </Button>

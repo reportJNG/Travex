@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 240" role="img" aria-labelledby="title desc">
+  <title id="title">TRAVEX</title>
+  <desc id="desc">Travex travel excellence brand mark and wordmark.</desc>
+  <defs>
+    <linearGradient id="top-node" x1="58" y1="20" x2="158" y2="111" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5ab89e"/>
+      <stop offset="0.48" stop-color="#5e9ccd"/>
+      <stop offset="1" stop-color="#9c72be"/>
+    </linearGradient>
+    <linearGradient id="left-node" x1="13" y1="132" x2="104" y2="218" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#76c899"/>
+      <stop offset="0.52" stop-color="#54b0a4"/>
+      <stop offset="1" stop-color="#5e9ccd"/>
+    </linearGradient>
+    <linearGradient id="right-node" x1="135" y1="132" x2="226" y2="218" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f5c07e"/>
+      <stop offset="0.52" stop-color="#f3996e"/>
+      <stop offset="1" stop-color="#d46799"/>
+    </linearGradient>
+  </defs>
+  <circle cx="119" cy="57" r="42" fill="url(#top-node)"/>
+  <circle cx="59" cy="177" r="42" fill="url(#left-node)"/>
+  <circle cx="179" cy="177" r="42" fill="url(#right-node)"/>
+  <path d="M119 47 192 189H46L119 47Z" fill="none" stroke="#222c4f" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="248" y="157" fill="#222c4f" font-family="Manrope, Montserrat, Arial, sans-serif" font-size="92" font-weight="750" letter-spacing="8">TRAVEX</text>
+</svg>

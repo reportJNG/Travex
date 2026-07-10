@@ -8,15 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
 export default function Settings() {
   const { t } = useI18n();
-  const { data: hotel } = trpc.hotel.myHotel.useQuery();
+  const { user } = useAuth();
+  const role = (user as any)?.role;
+  const isHotel = role === "hotel";
+
+  const { data: hotel } = trpc.hotel.myHotel.useQuery(undefined, { enabled: isHotel });
   const utils = trpc.useUtils();
   const [windowHours, setWindowHours] = useState<number | null>(null);
-  const effectiveWindowHours = windowHours ?? hotel?.offlinePaymentWindowHours ?? 48;
+  const effectiveWindowHours = windowHours ?? (hotel as any)?.offlinePaymentWindowHours ?? 48;
 
   const updateSettings = trpc.hotel.updateSettings.useMutation({
     onSuccess: () => {
@@ -34,49 +39,50 @@ export default function Settings() {
         description="Tune operational preferences for booking approval and account management."
       />
 
-      {hotel ? (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Clock className="h-5 w-5" />
-              Payment window settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <Label>Offline payment window</Label>
-                <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-                  {effectiveWindowHours} hours
-                </span>
+      {isHotel ? (
+        hotel ? (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Clock className="h-5 w-5" />
+                Payment window settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Label>Offline payment window</Label>
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+                    {effectiveWindowHours} hours
+                  </span>
+                </div>
+                <Slider value={[effectiveWindowHours]} onValueChange={(value) => setWindowHours(value[0])} min={6} max={168} step={6} />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>6h</span>
+                  <span>24h</span>
+                  <span>48h</span>
+                  <span>72h</span>
+                  <span>168h</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Time given to agencies to complete offline payment after you approve their booking.
+                </p>
               </div>
-              <Slider value={[effectiveWindowHours]} onValueChange={(value) => setWindowHours(value[0])} min={6} max={168} step={6} />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>6h</span>
-                <span>24h</span>
-                <span>48h</span>
-                <span>72h</span>
-                <span>168h</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Time given to agencies to complete offline payment after you approve their booking.
-              </p>
-            </div>
-
-            <Button onClick={() => updateSettings.mutate({ offlinePaymentWindowHours: effectiveWindowHours })} disabled={updateSettings.isPending}>
-              <Save className="me-2 h-4 w-4" />
-              {updateSettings.isPending ? "Saving..." : "Save settings"}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <EmptyState
-          icon={<SettingsIcon className="h-6 w-6" />}
-          title="No hotel profile found"
-          description="Create a hotel profile before changing operational settings."
-          action={<Button asChild><Link to="/inventory">Open inventory</Link></Button>}
-        />
-      )}
+              <Button onClick={() => updateSettings.mutate({ offlinePaymentWindowHours: effectiveWindowHours })} disabled={updateSettings.isPending}>
+                <Save className="me-2 h-4 w-4" />
+                {updateSettings.isPending ? "Saving..." : "Save settings"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <EmptyState
+            icon={<SettingsIcon className="h-6 w-6" />}
+            title="No hotel profile found"
+            description="Create a hotel profile before changing operational settings."
+            action={<Button asChild><Link to="/inventory">Open inventory</Link></Button>}
+          />
+        )
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -84,7 +90,7 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Manage your contact information and preferred language from your profile.
+            Manage your contact details, full name, and preferred display language from your profile page.
           </p>
           <Button asChild variant="outline">
             <Link to="/profile">Go to profile</Link>

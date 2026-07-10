@@ -17,17 +17,20 @@ export const bookingRouter = createRouter({
         checkOut: z.string(),
         roomsCount: z.number().int().min(1).max(20),
         paymentMethod: z.enum(["cib", "edahabia", "offline"]),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       if (input.paymentMethod === "offline") {
-        const { data, error } = await ctx.supabase.rpc("create_offline_booking", {
-          p_hotel: input.hotelId,
-          p_room_type: input.roomTypeId,
-          p_check_in: input.checkIn,
-          p_check_out: input.checkOut,
-          p_rooms: input.roomsCount,
-        });
+        const { data, error } = await ctx.supabase.rpc(
+          "create_offline_booking",
+          {
+            p_hotel: input.hotelId,
+            p_room_type: input.roomTypeId,
+            p_check_in: input.checkIn,
+            p_check_out: input.checkOut,
+            p_rooms: input.roomsCount,
+          }
+        );
         if (error) throw rpcError(error);
         const booking = camelize(unwrapRpcSingle(data));
         return {
@@ -68,7 +71,8 @@ export const bookingRouter = createRouter({
       .eq("agency_id", ctx.user.id)
       .eq("archived_by_agency", false)
       .order("created_at", { ascending: false });
-    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    if (error)
+      throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     return camelize(data ?? []);
   }),
 
@@ -88,7 +92,7 @@ export const bookingRouter = createRouter({
         bookingId: z.string().uuid(),
         approve: z.boolean(),
         reason: z.string().optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase.rpc("hotel_decide_booking", {
@@ -112,25 +116,56 @@ export const bookingRouter = createRouter({
       return { success: true, status: booking.status, booking };
     }),
 
+  get: agencyQuery
+    .input(z.object({ bookingId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const { data, error } = await ctx.supabase
+        .from("bookings")
+        .select("*, hotel:hotels(*, wilaya:wilayas(*), hotel_payment_settings:hotel_payment_settings(*)), room_type:room_types(*)")
+        .eq("id", input.bookingId)
+        .eq("agency_id", ctx.user.id)
+        .maybeSingle();
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+      if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      return camelize(data);
+    }),
+
   myStatement: agencyQuery.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
       .from("bookings")
-      .select("id, reference, total_price, commission_amount, status, check_in, check_out, nights, rooms_count, room_name_snapshot, created_at, hotel:hotels(name)")
+      .select(
+        "id, reference, total_price, commission_amount, status, check_in, check_out, nights, rooms_count, room_name_snapshot, created_at, hotel:hotels(name)"
+      )
       .eq("agency_id", ctx.user.id)
-      .in("status", ["confirmed", "completed", "pending_hotel", "awaiting_offline_payment", "pending_payment"])
+      .in("status", [
+        "confirmed",
+        "completed",
+        "pending_hotel",
+        "awaiting_offline_payment",
+        "pending_payment",
+      ])
       .order("created_at", { ascending: false });
-    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    if (error)
+      throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
 
-    const bookings = camelize(data ?? []);
+    const bookings = camelize(data ?? []) as Array<Record<string, any>>;
     const grouped: Record<string, any> = {};
     for (const booking of bookings) {
       const d = new Date(booking.checkIn || booking.createdAt);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (!grouped[key]) grouped[key] = { period: key, bookings: [], total: 0, commissionTotal: 0 };
+      if (!grouped[key])
+        grouped[key] = {
+          period: key,
+          bookings: [],
+          total: 0,
+          commissionTotal: 0,
+        };
       grouped[key].bookings.push(booking);
       grouped[key].total += Number(booking.totalPrice);
       grouped[key].commissionTotal += Number(booking.commissionAmount || 0);
     }
-    return Object.values(grouped).sort((a: any, b: any) => b.period.localeCompare(a.period));
+    return Object.values(grouped).sort((a: any, b: any) =>
+      b.period.localeCompare(a.period)
+    );
   }),
 });

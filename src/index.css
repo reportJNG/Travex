@@ -4,26 +4,32 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    --background: 225 33% 98%;
+    --foreground: 229 40% 22%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 229 40% 22%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 173 80% 31%;
+    --popover-foreground: 229 40% 22%;
+    --primary: 169 37% 48%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 174 56% 92%;
-    --accent-foreground: 174 84% 19%;
+    --secondary: 224 32% 95%;
+    --secondary-foreground: 229 40% 22%;
+    --muted: 222 27% 95%;
+    --muted-foreground: 220 16% 45%;
+    --accent: 166 36% 92%;
+    --accent-foreground: 168 44% 28%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 173 80% 31%;
-    --radius: 0.75rem;
+    --border: 220 26% 89%;
+    --input: 220 26% 89%;
+    --ring: 169 37% 48%;
+    --radius: 0.875rem;
+    --brand-ink: #222c4f;
+    --brand-teal: #54b0a4;
+    --brand-sky: #5e9ccd;
+    --brand-violet: #9c72be;
+    --brand-coral: #ea7c73;
+    --brand-amber: #f5c07e;
   }
 
   .dark {
@@ -55,6 +61,15 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    font-family:
+      Manrope,
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
@@ -78,7 +93,7 @@
 
 @layer components {
   .app-shell {
-    @apply min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.08),transparent_32rem),linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)];
+    @apply min-h-screen bg-[radial-gradient(circle_at_4%_4%,rgba(84,176,164,0.11),transparent_30rem),radial-gradient(circle_at_96%_12%,rgba(156,114,190,0.08),transparent_28rem),linear-gradient(180deg,#fafbfc_0%,#f1f4f8_100%)];
   }
 
   .app-container {
@@ -86,7 +101,7 @@
   }
 
   .surface-card {
-    @apply rounded-xl border border-border/80 bg-card shadow-sm;
+    @apply rounded-2xl border border-border/80 bg-card shadow-sm transition-all duration-300 hover:border-primary/20 hover:shadow-lg hover:shadow-[#222c4f]/5;
   }
 
   .section-y {
@@ -96,11 +111,92 @@
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
+
+  .brand-panel {
+    @apply relative overflow-hidden border border-white/10 bg-[#17213e] text-white shadow-2xl shadow-[#17213e]/20;
+  }
+
+  .brand-panel::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 opacity-30;
+    background:
+      radial-gradient(
+        circle at 85% 0%,
+        rgba(84, 176, 164, 0.38),
+        transparent 32rem
+      ),
+      radial-gradient(
+        circle at 0% 100%,
+        rgba(234, 124, 115, 0.22),
+        transparent 28rem
+      );
+  }
 }
 
 /* Smooth page transitions */
 @layer utilities {
   .transition-page {
-    @apply transition-all duration-200 ease-in-out;
+    animation: travex-page-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .text-brand-gradient {
+    background: linear-gradient(
+      100deg,
+      #54b0a4 0%,
+      #5e9ccd 34%,
+      #9c72be 62%,
+      #ea7c73 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .brand-shine {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .brand-shine::after {
+    content: "";
+    position: absolute;
+    inset: -120% auto -120% -55%;
+    width: 34%;
+    transform: rotate(18deg);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.34),
+      transparent
+    );
+    transition: left 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+
+  .brand-shine:hover::after {
+    left: 125%;
+  }
+}
+
+@keyframes travex-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
