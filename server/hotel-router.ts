@@ -251,4 +251,62 @@ export const hotelRouter = createRouter({
       if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
       return { success: true };
     }),
+
+  myInvoices: hotelQuery.query(async ({ ctx }) => {
+    const hotel = await getOwnedHotel(ctx);
+    if (!hotel) return [];
+    const { data, error } = await ctx.supabase
+      .from("invoices")
+      .select("*")
+      .eq("hotel_id", hotel.id)
+      .order("period_year", { ascending: false })
+      .order("period_month", { ascending: false });
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+    return camelize(data ?? []);
+  }),
+
+  analytics: hotelQuery.query(async ({ ctx }) => {
+    const hotel = await getOwnedHotel(ctx);
+    if (!hotel) return null;
+
+    const { data, error } = await ctx.supabase
+      .from("bookings")
+      .select("status, total_price, rooms_count, nights, check_in, created_at")
+      .eq("hotel_id", hotel.id);
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+
+    const bookings = camelize(data ?? []);
+    const confirmed = ["confirmed", "completed"];
+
+    const nowDate = new Date();
+    const cm = nowDate.getMonth();
+    const cy = nowDate.getFullYear();
+    const lm = cm === 0 ? 11 : cm - 1;
+    const ly = cm === 0 ? cy - 1 : cy;
+
+    const inMonth = (b: any, month: number, year: number) => {
+      const d = new Date(b.createdAt);
+      return d.getMonth() === month && d.getFullYear() === year;
+    };
+
+    const thisMonth = bookings.filter((b: any) => inMonth(b, cm, cy));
+    const lastMonth = bookings.filter((b: any) => inMonth(b, lm, ly));
+
+    const revenue = (arr: any[]) =>
+      arr.filter((b: any) => confirmed.includes(b.status)).reduce((s: number, b: any) => s + Number(b.totalPrice), 0);
+
+    const nights = (arr: any[]) =>
+      arr.filter((b: any) => confirmed.includes(b.status)).reduce((s: number, b: any) => s + Number(b.nights) * Number(b.roomsCount), 0);
+
+    return {
+      thisMonthBookings: thisMonth.length,
+      lastMonthBookings: lastMonth.length,
+      thisMonthRevenue: revenue(thisMonth),
+      lastMonthRevenue: revenue(lastMonth),
+      thisMonthNights: nights(thisMonth),
+      lastMonthNights: nights(lastMonth),
+      confirmedTotal: bookings.filter((b: any) => confirmed.includes(b.status)).length,
+      totalBookings: bookings.length,
+    };
+  }),
 });

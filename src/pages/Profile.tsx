@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Globe, Mail, Phone, Save, UserCircle } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
@@ -25,9 +25,17 @@ export default function Profile() {
   const { data: userData } = trpc.auth.me.useQuery();
   const profile = (userData as any)?.profile;
 
-  const [fullName, setFullName] = useState((user as any)?.name || "");
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [locale, setLocale] = useState<"fr" | "ar" | "en">(currentLocale);
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.fullName || (user as any)?.name || "");
+      setPhone(profile.phone || "");
+      setLocale((profile.preferredLocale as "fr" | "ar" | "en") || currentLocale);
+    }
+  }, [profile, user, currentLocale]);
 
   const updateMutation = trpc.auth.updateProfile.useMutation({
     onSuccess: () => {

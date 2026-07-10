@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { Building2, CheckCircle, ChevronLeft, ChevronRight, Plane } from "lucide-react";
+import { z } from "zod";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -10,13 +11,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const totalSteps = 4;
+
+const step2Schema = z
+  .object({
+    fullName: z.string().min(3, "Full name must be at least 3 characters"),
+    email: z.string().email("Enter a valid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+const step3Schema = z.object({
+  legalName: z.string().min(2, "Legal name must be at least 2 characters"),
+  phone: z.string().min(8, "Enter a valid phone number"),
+  wilaya: z.string().min(1, "Please select a wilaya"),
+});
+
+type FieldErrors = Record<string, string>;
 
 export default function Register() {
   const { t } = useI18n();
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [success, setSuccess] = useState(false);
   const [role, setRole] = useState<"agency" | "hotel">("agency");
   const [fullName, setFullName] = useState("");
@@ -29,43 +58,63 @@ export default function Register() {
   const [taxId, setTaxId] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
 
+  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery();
+
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: () => setSuccess(true),
-    onError: (err) => setError(err.message),
+    onError: (err) => {
+      if (err.message === "EMAIL_EXISTS") setError("This email is already registered. Please log in.");
+      else if (err.message === "PHONE_INVALID") setError("Phone number is invalid. Use +213XXXXXXXXX format.");
+      else if (err.message === "TAX_OR_LICENSE_REQUIRED") setError("Hotel accounts must provide Tax ID or License Number.");
+      else setError(err.message || "Registration failed. Please try again.");
+    },
   });
 
-  const validateStep = (current: number) => {
+  const clearErrors = () => {
+    setError("");
+    setFieldErrors({});
+  };
+
+  const validateStep = (current: number): boolean => {
+    clearErrors();
     if (current === 2) {
-      if (!fullName || !email || !password || !confirmPassword) return "All fields are required";
-      if (password !== confirmPassword) return "Passwords do not match";
-      if (password.length < 8) return "Password must be at least 8 characters";
-    }
-    if (current === 3) {
-      if (!legalName || !phone || !wilaya) return "All required fields must be filled";
-      if (role === "hotel" && !taxId && !licenseNumber) {
-        return "Hotel accounts must provide Tax ID or License Number";
+      const result = step2Schema.safeParse({ fullName, email, password, confirmPassword });
+      if (!result.success) {
+        const errors: FieldErrors = {};
+        for (const issue of result.error.issues) {
+          const field = issue.path[0] as string;
+          if (!errors[field]) errors[field] = issue.message;
+        }
+        setFieldErrors(errors);
+        return false;
       }
     }
-    return "";
+    if (current === 3) {
+      const result = step3Schema.safeParse({ legalName, phone, wilaya });
+      if (!result.success) {
+        const errors: FieldErrors = {};
+        for (const issue of result.error.issues) {
+          const field = issue.path[0] as string;
+          if (!errors[field]) errors[field] = issue.message;
+        }
+        setFieldErrors(errors);
+        return false;
+      }
+      if (role === "hotel" && !taxId && !licenseNumber) {
+        setError("Hotel accounts must provide Tax ID or License Number");
+        return false;
+      }
+    }
+    return true;
   };
 
   const nextStep = () => {
-    const validationError = validateStep(step);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setError("");
-    setStep((value) => Math.min(totalSteps, value + 1));
+    if (!validateStep(step)) return;
+    setStep((v) => Math.min(totalSteps, v + 1));
   };
 
   const handleSubmit = () => {
-    const validationError = validateStep(2) || validateStep(3);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    setError("");
+    if (!validateStep(2) || !validateStep(3)) return;
     registerMutation.mutate({
       role,
       fullName,
@@ -79,6 +128,13 @@ export default function Register() {
       locale: "fr",
     });
   };
+
+  const selectedWilayaName = wilayas?.find((w) => String(w.code) === wilaya)?.nameFr;
+
+  const FieldError = ({ field }: { field: string }) =>
+    fieldErrors[field] ? (
+      <p className="mt-1 text-xs text-destructive">{fieldErrors[field]}</p>
+    ) : null;
 
   if (success) {
     return (
@@ -137,10 +193,14 @@ export default function Register() {
             {step === 1 ? (
               <div className="space-y-4">
                 <Label>{t("auth.role")}</Label>
-                <RadioGroup value={role} onValueChange={(value) => setRole(value as "agency" | "hotel")} className="grid gap-3 sm:grid-cols-2">
+                <RadioGroup
+                  value={role}
+                  onValueChange={(value) => setRole(value as "agency" | "hotel")}
+                  className="grid gap-3 sm:grid-cols-2"
+                >
                   {[
-                    { value: "agency", label: t("auth.role.agency"), icon: Plane },
-                    { value: "hotel", label: t("auth.role.hotel"), icon: Building2 },
+                    { value: "agency", label: t("auth.role.agency"), icon: Plane, desc: "Book hotels at B2B rates" },
+                    { value: "hotel", label: t("auth.role.hotel"), icon: Building2, desc: "Manage inventory & requests" },
                   ].map((item) => (
                     <Label
                       key={item.value}
@@ -149,7 +209,8 @@ export default function Register() {
                     >
                       <RadioGroupItem value={item.value} id={item.value} className="sr-only" />
                       <item.icon className="mb-3 h-8 w-8 text-primary" />
-                      <span className="font-medium">{item.label}</span>
+                      <span className="block font-medium">{item.label}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{item.desc}</span>
                     </Label>
                   ))}
                 </RadioGroup>
@@ -158,47 +219,119 @@ export default function Register() {
 
             {step === 2 ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="fullName">{t("auth.fullName")} *</Label>
-                  <Input id="fullName" value={fullName} onChange={(event) => setFullName(event.target.value)} />
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => { setFullName(e.target.value); clearErrors(); }}
+                    placeholder="Ahmed Benali"
+                    className={fieldErrors.fullName ? "border-destructive" : ""}
+                  />
+                  <FieldError field="fullName" />
                 </div>
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="email">{t("auth.email")} *</Label>
-                  <Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); clearErrors(); }}
+                    placeholder="email@example.com"
+                    className={fieldErrors.email ? "border-destructive" : ""}
+                  />
+                  <FieldError field="email" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="password">{t("auth.password")} *</Label>
-                  <Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); clearErrors(); }}
+                    placeholder="Min. 8 characters"
+                    className={fieldErrors.password ? "border-destructive" : ""}
+                  />
+                  <FieldError field="password" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="confirmPassword">Confirm password *</Label>
-                  <Input id="confirmPassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => { setConfirmPassword(e.target.value); clearErrors(); }}
+                    placeholder="Repeat password"
+                    className={fieldErrors.confirmPassword ? "border-destructive" : ""}
+                  />
+                  <FieldError field="confirmPassword" />
                 </div>
               </div>
             ) : null}
 
             {step === 3 ? (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
+                <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="legalName">{t("auth.legalName")} *</Label>
-                  <Input id="legalName" value={legalName} onChange={(event) => setLegalName(event.target.value)} />
+                  <Input
+                    id="legalName"
+                    value={legalName}
+                    onChange={(e) => { setLegalName(e.target.value); clearErrors(); }}
+                    placeholder="Company or business name"
+                    className={fieldErrors.legalName ? "border-destructive" : ""}
+                  />
+                  <FieldError field="legalName" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label htmlFor="phone">{t("auth.phone")} *</Label>
-                  <Input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+213555123456" />
+                  <Input
+                    id="phone"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); clearErrors(); }}
+                    placeholder="+213 5XX XXX XXX"
+                    className={fieldErrors.phone ? "border-destructive" : ""}
+                  />
+                  <FieldError field="phone" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="wilaya">{t("auth.wilaya")} *</Label>
-                  <Input id="wilaya" type="number" min={1} max={58} value={wilaya} onChange={(event) => setWilaya(event.target.value)} />
+                <div className="space-y-1.5">
+                  <Label>{t("auth.wilaya")} *</Label>
+                  <Select value={wilaya} onValueChange={(v) => { setWilaya(v); clearErrors(); }}>
+                    <SelectTrigger className={fieldErrors.wilaya ? "border-destructive" : ""}>
+                      <SelectValue placeholder="Select wilaya" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {wilayas?.map((w) => (
+                        <SelectItem key={w.code} value={String(w.code)}>
+                          {w.code} – {w.nameFr}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldError field="wilaya" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taxId">{t("auth.taxId")}</Label>
-                  <Input id="taxId" value={taxId} onChange={(event) => setTaxId(event.target.value)} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="taxId">{t("auth.taxId")} {role === "hotel" ? "*" : ""}</Label>
+                  <Input
+                    id="taxId"
+                    value={taxId}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    placeholder="NIF / Numéro fiscal"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="licenseNumber">{t("auth.licenseNumber")}</Label>
-                  <Input id="licenseNumber" value={licenseNumber} onChange={(event) => setLicenseNumber(event.target.value)} />
+                <div className="space-y-1.5">
+                  <Label htmlFor="licenseNumber">{t("auth.licenseNumber")} {role === "hotel" ? "*" : ""}</Label>
+                  <Input
+                    id="licenseNumber"
+                    value={licenseNumber}
+                    onChange={(e) => setLicenseNumber(e.target.value)}
+                    placeholder="Numéro d'agrément"
+                  />
                 </div>
+                {role === "hotel" ? (
+                  <p className="sm:col-span-2 text-xs text-muted-foreground">
+                    * Hotel accounts must provide at least Tax ID or License Number.
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -207,12 +340,14 @@ export default function Register() {
                 <h3 className="font-semibold">Review your information</h3>
                 <div className="grid gap-3 rounded-xl border bg-muted/40 p-4 text-sm sm:grid-cols-2">
                   {[
-                    ["Role", role],
+                    ["Account type", role === "agency" ? "Travel Agency" : "Hotel"],
                     ["Full name", fullName],
                     ["Email", email],
                     ["Legal name", legalName],
                     ["Phone", phone],
-                    ["Wilaya", wilaya || "-"],
+                    ["Wilaya", selectedWilayaName ? `${wilaya} – ${selectedWilayaName}` : wilaya || "-"],
+                    ...(taxId ? [["Tax ID", taxId]] : []),
+                    ...(licenseNumber ? [["License", licenseNumber]] : []),
                   ].map(([label, value]) => (
                     <div key={label}>
                       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
@@ -228,7 +363,7 @@ export default function Register() {
 
             <div className="mt-6 flex items-center justify-between gap-3">
               {step > 1 ? (
-                <Button variant="outline" onClick={() => setStep((value) => Math.max(1, value - 1))}>
+                <Button variant="outline" onClick={() => { clearErrors(); setStep((v) => Math.max(1, v - 1)); }}>
                   <ChevronLeft className="me-1 h-4 w-4" />
                   {t("back")}
                 </Button>

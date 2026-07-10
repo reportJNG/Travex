@@ -111,4 +111,26 @@ export const bookingRouter = createRouter({
       const booking = camelize(unwrapRpcSingle(data));
       return { success: true, status: booking.status, booking };
     }),
+
+  myStatement: agencyQuery.query(async ({ ctx }) => {
+    const { data, error } = await ctx.supabase
+      .from("bookings")
+      .select("id, reference, total_price, commission_amount, status, check_in, check_out, nights, rooms_count, room_name_snapshot, created_at, hotel:hotels(name)")
+      .eq("agency_id", ctx.user.id)
+      .in("status", ["confirmed", "completed", "pending_hotel", "awaiting_offline_payment", "pending_payment"])
+      .order("created_at", { ascending: false });
+    if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+
+    const bookings = camelize(data ?? []);
+    const grouped: Record<string, any> = {};
+    for (const booking of bookings) {
+      const d = new Date(booking.checkIn || booking.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!grouped[key]) grouped[key] = { period: key, bookings: [], total: 0, commissionTotal: 0 };
+      grouped[key].bookings.push(booking);
+      grouped[key].total += Number(booking.totalPrice);
+      grouped[key].commissionTotal += Number(booking.commissionAmount || 0);
+    }
+    return Object.values(grouped).sort((a: any, b: any) => b.period.localeCompare(a.period));
+  }),
 });

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
@@ -47,9 +48,20 @@ const AMENITY_ICON_MAP: Record<string, React.ReactNode> = {
   beach: <TreePalm className="h-4 w-4" />,
 };
 
+const bookingSchema = z.object({
+  selectedRoom: z.string().min(1, "Please select a room"),
+  checkIn: z.string().min(1, "Check-in date is required"),
+  checkOut: z.string().min(1, "Check-out date is required"),
+  roomsCount: z.number().int().min(1).max(20),
+}).refine((d) => {
+  if (!d.checkIn || !d.checkOut) return true;
+  return new Date(d.checkOut) > new Date(d.checkIn);
+}, { message: "Check-out must be after check-in", path: ["checkOut"] });
+
+type BookingErrors = { selectedRoom?: string; checkIn?: string; checkOut?: string };
+
 function Stars({ count }: { count?: number | null }) {
   if (!count) return null;
-
   return (
     <div className="flex items-center gap-0.5 text-amber-500" aria-label={`${count} stars`}>
       {Array.from({ length: count }).map((_, index) => (
@@ -68,7 +80,7 @@ export default function HotelDetail() {
   const { data: hotel, isLoading } = trpc.marketplace.getHotel.useQuery({ id: hotelId });
   const createBooking = trpc.booking.create.useMutation({
     onSuccess: (data) => {
-      toast.success(`${t("booking.success")} - Ref: ${data.reference}`);
+      toast.success(`${t("booking.success")} — Ref: ${data.reference || "pending"}`);
       navigate("/dashboard");
     },
     onError: (err) => toast.error(err.message),
@@ -79,15 +91,17 @@ export default function HotelDetail() {
   const [checkOut, setCheckOut] = useState("");
   const [roomsCount, setRoomsCount] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<"cib" | "edahabia" | "offline">("offline");
+  const [bookingErrors, setBookingErrors] = useState<BookingErrors>({});
 
   const rooms = (hotel?.rooms || []) as Array<Record<string, unknown>>;
-  const selectedRoomData = rooms.find((room) => room.id === selectedRoom);
-  const nights = checkIn && checkOut
-    ? Math.max(0, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
-    : 0;
-  const totalEstimate = selectedRoomData && nights > 0
-    ? Number(selectedRoomData.b2bRate) * nights * roomsCount
-    : 0;
+  const activeRooms = rooms.filter((r) => r.isActive !== false);
+  const selectedRoomData = activeRooms.find((room) => room.id === selectedRoom);
+  const nights =
+    checkIn && checkOut
+      ? Math.max(0, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
+      : 0;
+  const totalEstimate =
+    selectedRoomData && nights > 0 ? Number(selectedRoomData.b2bRate) * nights * roomsCount : 0;
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
@@ -96,13 +110,30 @@ export default function HotelDetail() {
       navigate("/login");
       return;
     }
-    if (!selectedRoom || !checkIn || !checkOut || nights <= 0) {
-      toast.error("Please choose a room and valid dates");
+
+    const result = bookingSchema.safeParse({
+      selectedRoom: selectedRoom || "",
+      checkIn,
+      checkOut,
+      roomsCount,
+    });
+
+    if (!result.success) {
+      const errors: BookingErrors = {};
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as string;
+        if (!errors[field as keyof BookingErrors]) {
+          (errors as Record<string, string>)[field] = issue.message;
+        }
+      }
+      setBookingErrors(errors);
       return;
     }
+
+    setBookingErrors({});
     createBooking.mutate({
       hotelId,
-      roomTypeId: selectedRoom,
+      roomTypeId: selectedRoom!,
       checkIn,
       checkOut,
       roomsCount,
@@ -134,7 +165,7 @@ export default function HotelDetail() {
   }
 
   const photos = (hotel.photos || []) as Array<{ storagePath: string }>;
-  const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; label?: { fr?: string }; labelFr?: string } }>;
+  const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr?: string } }>;
   const isSeeded = hotel.isSeeded as boolean;
   const wilaya = hotel.wilaya as { nameFr?: string } | undefined;
   const wilayaName = wilaya?.nameFr || "Algeria";
@@ -146,63 +177,116 @@ export default function HotelDetail() {
     { present: hotel.instagramUrl, href: String(hotel.instagramUrl || ""), icon: Instagram, label: "Instagram" },
   ];
 
+  const paymentMethods = [
+    {
+      value: "offline" as const,
+      label: t("payment.offline"),
+      desc: `Pay within ${(hotel.offlinePaymentWindowHours as number) || 48}h of approval`,
+    },
+    { value: "cib" as const, label: t("payment.cib"), desc: "Online card payment via Chargily" },
+    { value: "edahabia" as const, label: t("payment.edahabia"), desc: "Online via Edahabia card" },
+  ];
+
   const bookingPanel = (
     <Card className="overflow-hidden">
-      <CardHeader>
+      <CardHeader className="pb-3">
         <CardTitle className="text-lg">{t("booking.title")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label>{t("booking.checkIn")}</Label>
-            <Input type="date" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} min={today} />
+            <Label className="text-xs">{t("booking.checkIn")}</Label>
+            <Input
+              type="date"
+              value={checkIn}
+              onChange={(e) => { setCheckIn(e.target.value); setBookingErrors((prev) => ({ ...prev, checkIn: undefined })); }}
+              min={today}
+              className={bookingErrors.checkIn ? "border-destructive" : ""}
+            />
+            {bookingErrors.checkIn ? <p className="text-xs text-destructive">{bookingErrors.checkIn}</p> : null}
           </div>
           <div className="space-y-1.5">
-            <Label>{t("booking.checkOut")}</Label>
-            <Input type="date" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} min={checkIn || today} />
+            <Label className="text-xs">{t("booking.checkOut")}</Label>
+            <Input
+              type="date"
+              value={checkOut}
+              onChange={(e) => { setCheckOut(e.target.value); setBookingErrors((prev) => ({ ...prev, checkOut: undefined })); }}
+              min={checkIn || today}
+              className={bookingErrors.checkOut ? "border-destructive" : ""}
+            />
+            {bookingErrors.checkOut ? <p className="text-xs text-destructive">{bookingErrors.checkOut}</p> : null}
           </div>
         </div>
+
         <div className="space-y-1.5">
-          <Label>{t("booking.rooms")}</Label>
-          <Input type="number" min={1} max={20} value={roomsCount} onChange={(event) => setRoomsCount(parseInt(event.target.value) || 1)} />
+          <Label className="text-xs">{t("booking.rooms")}</Label>
+          <Input
+            type="number"
+            min={1}
+            max={20}
+            value={roomsCount}
+            onChange={(e) => setRoomsCount(parseInt(e.target.value) || 1)}
+          />
         </div>
+
         <div className="space-y-2">
-          <Label>{t("booking.paymentMethod")}</Label>
-          <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as "cib" | "edahabia" | "offline")} className="space-y-2">
-            {[
-              ["offline", t("payment.offline")],
-              ["cib", t("payment.cib")],
-              ["edahabia", t("payment.edahabia")],
-            ].map(([value, label]) => (
-              <Label key={value} htmlFor={value} className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10">
-                <RadioGroupItem id={value} value={value} />
-                <CreditCard className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">{label}</span>
+          <Label className="text-xs">{t("booking.paymentMethod")}</Label>
+          <RadioGroup
+            value={paymentMethod}
+            onValueChange={(value) => setPaymentMethod(value as typeof paymentMethod)}
+            className="space-y-1.5"
+          >
+            {paymentMethods.map(({ value, label, desc }) => (
+              <Label
+                key={value}
+                htmlFor={`pay-${value}`}
+                className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10"
+              >
+                <RadioGroupItem id={`pay-${value}`} value={value} />
+                <CreditCard className="h-4 w-4 shrink-0 text-primary" />
+                <div className="min-w-0">
+                  <span className="text-sm font-medium">{label}</span>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
               </Label>
             ))}
           </RadioGroup>
         </div>
+
+        {bookingErrors.selectedRoom ? (
+          <p className="text-xs text-destructive">{bookingErrors.selectedRoom}</p>
+        ) : null}
+
         {nights > 0 && selectedRoomData ? (
           <div className="rounded-xl border bg-muted/40 p-3 text-sm">
-            <div className="flex justify-between gap-3">
-              <span className="text-muted-foreground">
-                {Number(selectedRoomData.b2bRate).toLocaleString()} x {nights} nights x {roomsCount}
-              </span>
-              <span>{totalEstimate.toLocaleString()} DZD</span>
+            <div className="flex justify-between gap-3 text-muted-foreground">
+              <span>{Number(selectedRoomData.b2bRate).toLocaleString()} × {nights} nights × {roomsCount} rooms</span>
             </div>
-            <Separator className="my-3" />
+            <Separator className="my-2" />
             <div className="flex justify-between gap-3 font-semibold">
               <span>{t("booking.total")}</span>
               <span className="text-primary">{totalEstimate.toLocaleString()} DZD</span>
             </div>
           </div>
+        ) : selectedRoom && checkIn && checkOut && nights <= 0 ? (
+          <p className="text-xs text-destructive">Check-out must be after check-in</p>
         ) : null}
-        <Button className="w-full" disabled={!selectedRoom || !checkIn || !checkOut || createBooking.isPending} onClick={handleBook}>
+
+        <Button
+          className="w-full"
+          disabled={createBooking.isPending}
+          onClick={handleBook}
+        >
           {createBooking.isPending ? t("loading") : t("booking.submit")}
         </Button>
+
         {!user ? (
           <p className="text-center text-xs text-muted-foreground">
-            Please <Link to="/login" className="font-medium text-primary hover:underline">login</Link> to book.
+            Please{" "}
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              login
+            </Link>{" "}
+            to make a booking.
           </p>
         ) : null}
       </CardContent>
@@ -211,6 +295,7 @@ export default function HotelDetail() {
 
   return (
     <div className="space-y-6 pb-20 lg:pb-0">
+      {/* Photo grid */}
       <div className="grid gap-2 overflow-hidden rounded-2xl md:grid-cols-3">
         <div className="aspect-[16/10] bg-muted md:col-span-2 md:aspect-auto md:h-96">
           {photos[0]?.storagePath ? (
@@ -224,7 +309,9 @@ export default function HotelDetail() {
         <div className="hidden gap-2 md:grid">
           {[photos[1]?.storagePath, photos[2]?.storagePath].map((src, index) => (
             <div key={index} className="h-[calc(12rem-0.25rem)] bg-muted">
-              {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : null}
+              {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : (
+                <div className="h-full bg-gradient-to-br from-primary/5 to-slate-100" />
+              )}
             </div>
           ))}
         </div>
@@ -232,6 +319,7 @@ export default function HotelDetail() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
+          {/* Info card */}
           <Card>
             <CardContent className="p-5 sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -243,11 +331,11 @@ export default function HotelDetail() {
                   <h1 className="break-words text-3xl font-semibold tracking-tight">{hotel.name as string}</h1>
                   <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                     <MapPin className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{hotel.address as string || wilayaName}</span>
+                    <span className="truncate">{(hotel.address as string) || wilayaName}</span>
                   </p>
                 </div>
                 <Button variant="outline" asChild>
-                  <Link to="/marketplace">Back</Link>
+                  <Link to="/marketplace">← Back</Link>
                 </Button>
               </div>
               {hotel.description ? (
@@ -256,6 +344,7 @@ export default function HotelDetail() {
             </CardContent>
           </Card>
 
+          {/* Amenities */}
           <Card>
             <CardHeader>
               <CardTitle>{t("hotel.amenities")}</CardTitle>
@@ -266,7 +355,7 @@ export default function HotelDetail() {
                   {amenities.map((item) => (
                     <Badge key={item.amenity.key} variant="secondary" className="gap-1.5 px-3 py-1.5">
                       {AMENITY_ICON_MAP[item.amenity.key] || null}
-                      {item.amenity.label?.fr || item.amenity.labelFr}
+                      {item.amenity.labelFr}
                     </Badge>
                   ))}
                 </div>
@@ -276,71 +365,104 @@ export default function HotelDetail() {
             </CardContent>
           </Card>
 
+          {/* Rooms */}
           {!isSeeded ? (
             <Card>
               <CardHeader>
                 <CardTitle>{t("hotel.rooms")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {rooms.length > 0 ? rooms.map((room) => {
-                  const available = Number(room.availableCount || 0);
-                  return (
-                    <button
-                      key={room.id as string}
-                      type="button"
-                      onClick={() => setSelectedRoom(room.id as string)}
-                      className={`w-full rounded-xl border p-4 text-left transition-colors hover:bg-accent ${selectedRoom === room.id ? "border-primary bg-primary/10" : ""}`}
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <h3 className="font-semibold">{room.name as string}</h3>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            Capacity {room.totalCapacity as number} - {available} available
-                          </p>
+                {activeRooms.length > 0 ? (
+                  activeRooms.map((room) => {
+                    const available = Number(room.availableCount || 0);
+                    const isSelected = selectedRoom === room.id;
+                    return (
+                      <button
+                        key={room.id as string}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRoom(room.id as string);
+                          setBookingErrors((prev) => ({ ...prev, selectedRoom: undefined }));
+                        }}
+                        className={`w-full rounded-xl border p-4 text-left transition-all hover:border-primary/50 hover:bg-accent ${
+                          isSelected ? "border-primary bg-primary/10 ring-1 ring-primary/20" : ""
+                        } ${available <= 0 ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                        disabled={available <= 0}
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h3 className="font-semibold">{room.name as string}</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Capacity {room.totalCapacity as number} ·{" "}
+                              <span className={available > 0 ? "text-emerald-600" : "text-muted-foreground"}>
+                                {available > 0 ? `${available} available` : "Unavailable"}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="text-left sm:text-right">
+                            <div className="font-semibold text-primary">
+                              {Number(room.b2bRate).toLocaleString()} DZD
+                            </div>
+                            <div className="text-xs text-muted-foreground">/ night</div>
+                          </div>
                         </div>
-                        <div className="text-left sm:text-right">
-                          <div className="font-semibold text-primary">{Number(room.b2bRate).toLocaleString()} DZD</div>
-                          <div className="text-xs text-muted-foreground">/ night</div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                }) : (
+                      </button>
+                    );
+                  })
+                ) : (
                   <EmptyState title="No rooms available" description="This hotel has not published room inventory yet." />
                 )}
               </CardContent>
             </Card>
           ) : null}
 
+          {/* Contact */}
           <Card>
             <CardHeader>
               <CardTitle>{t("hotel.contact")}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
-              {contacts.map(({ present, href, icon: Icon, label }, index) => present ? (
-                <a key={index} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener" className="flex items-center gap-2 rounded-lg border p-3 text-sm hover:bg-accent">
-                  <Icon className="h-4 w-4 text-primary" />
-                  <span className="truncate">{label}</span>
-                </a>
-              ) : null)}
+              {contacts.map(({ present, href, icon: Icon, label }, index) =>
+                present ? (
+                  <a
+                    key={index}
+                    href={href}
+                    target={href.startsWith("http") ? "_blank" : undefined}
+                    rel="noopener"
+                    className="flex items-center gap-2 rounded-lg border p-3 text-sm transition-colors hover:bg-accent"
+                  >
+                    <Icon className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="truncate">{label}</span>
+                  </a>
+                ) : null
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {!isSeeded ? <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">{bookingPanel}</aside> : null}
+        {!isSeeded ? (
+          <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">{bookingPanel}</aside>
+        ) : null}
       </div>
 
+      {/* Mobile sticky booking bar */}
       {!isSeeded ? (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card p-3 shadow-lg lg:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 p-3 shadow-lg backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">
-                {totalEstimate ? `${totalEstimate.toLocaleString()} DZD` : "Select a room"}
+                {totalEstimate ? `${totalEstimate.toLocaleString()} DZD` : selectedRoom ? "Select dates" : "Select a room"}
               </div>
-              <div className="text-xs text-muted-foreground">{nights > 0 ? `${nights} nights` : "Choose dates"}</div>
+              <div className="text-xs text-muted-foreground">
+                {nights > 0 ? `${nights} nights · ${roomsCount} room${roomsCount > 1 ? "s" : ""}` : "Choose dates"}
+              </div>
             </div>
-            <Button onClick={handleBook} disabled={!selectedRoom || !checkIn || !checkOut || createBooking.isPending}>
-              {t("booking.submit")}
+            <Button
+              onClick={handleBook}
+              disabled={createBooking.isPending}
+              className="shrink-0"
+            >
+              {createBooking.isPending ? "Booking..." : t("booking.submit")}
             </Button>
           </div>
         </div>

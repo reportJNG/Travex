@@ -47,6 +47,12 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
+const roleColors: Record<string, string> = {
+  agency: "bg-sky-100 text-sky-700",
+  hotel: "bg-primary/10 text-primary",
+  super_admin: "bg-violet-100 text-violet-700",
+};
+
 function getNavItems(role: string, t: (k: string) => string): NavItem[] {
   switch (role) {
     case "agency":
@@ -68,6 +74,7 @@ function getNavItems(role: string, t: (k: string) => string): NavItem[] {
         { label: t("nav.verifications"), path: "/admin/verifications", icon: CheckCircle },
         { label: t("nav.users"), path: "/admin/users", icon: Users },
         { label: t("nav.claims"), path: "/admin/claims", icon: FileText },
+        { label: t("admin.invoices"), path: "/admin/invoices", icon: Receipt },
       ];
     default:
       return [];
@@ -84,23 +91,24 @@ function NavLinks({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="space-y-1">
+    <nav className="space-y-0.5">
       {items.map((item) => {
-        const active = currentPath === item.path;
+        const active = currentPath === item.path || (item.path !== "/" && currentPath.startsWith(item.path));
         return (
           <Link
             key={item.path}
             to={item.path}
             onClick={onNavigate}
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
               active
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
             )}
           >
-            <item.icon className="h-4 w-4 shrink-0" />
+            <item.icon className={cn("h-4 w-4 shrink-0 transition-transform", active ? "" : "group-hover:scale-110")} />
             <span className="truncate">{item.label}</span>
+            {active ? <span className="ms-auto h-1.5 w-1.5 rounded-full bg-primary-foreground/70" /> : null}
           </Link>
         );
       })}
@@ -123,6 +131,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const role = (user as any)?.role || "";
   const userName = (user as any)?.name || (user as any)?.email || "User";
   const navItems = getNavItems(role, t);
+  const roleBadge = role.replace("_", " ");
 
   return (
     <div className="app-shell" dir={dir}>
@@ -145,6 +154,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <SheetDescription>{t("app.tagline")}</SheetDescription>
                   </SheetHeader>
                   <div className="p-4">
+                    <div className="mb-4 rounded-xl bg-muted/60 px-3 py-2.5">
+                      <div className="truncate text-sm font-semibold">{userName}</div>
+                      <span className={cn("mt-1 inline-block rounded-md px-2 py-0.5 text-xs font-medium capitalize", roleColors[role] ?? "bg-muted text-muted-foreground")}>
+                        {roleBadge}
+                      </span>
+                    </div>
                     <NavLinks
                       items={navItems}
                       currentPath={location.pathname}
@@ -196,7 +211,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Bell className="h-5 w-5" />
                   {unreadCount ? (
                     <Badge className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px]">
-                      {unreadCount}
+                      {unreadCount > 99 ? "99+" : unreadCount}
                     </Badge>
                   ) : null}
                 </Button>
@@ -204,12 +219,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="max-w-[11rem] gap-2">
-                      <UserCircle className="h-5 w-5 shrink-0" />
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
                       <span className="hidden truncate text-sm sm:inline">{userName}</span>
                       <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-52">
+                    <div className="px-2 py-1.5">
+                      <p className="truncate text-sm font-medium">{userName}</p>
+                      <p className="truncate text-xs capitalize text-muted-foreground">{roleBadge}</p>
+                    </div>
+                    <Separator className="my-1" />
                     <DropdownMenuItem onClick={() => navigate("/profile")}>
                       <UserCircle className="me-2 h-4 w-4" />
                       {t("nav.profile")}
@@ -219,7 +241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       {t("nav.settings")}
                     </DropdownMenuItem>
                     <Separator className="my-1" />
-                    <DropdownMenuItem onClick={logout} className="text-destructive">
+                    <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
                       <LogOut className="me-2 h-4 w-4" />
                       {t("auth.logout")}
                     </DropdownMenuItem>
@@ -243,11 +265,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="app-container flex min-h-[calc(100vh-4rem)] gap-6 px-0 sm:px-6 lg:px-8">
         {user && navItems.length > 0 ? (
           <aside className="sticky top-20 hidden h-[calc(100vh-5.5rem)] w-64 shrink-0 self-start overflow-y-auto rounded-xl border bg-card p-3 shadow-sm lg:block">
-            <div className="mb-3 rounded-lg bg-muted/70 p-3">
-              <div className="truncate text-sm font-semibold">{userName}</div>
-              <div className="mt-1 truncate text-xs capitalize text-muted-foreground">{role.replace("_", " ")}</div>
+            <div className="mb-4 rounded-xl bg-muted/50 px-3 py-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
+                  {userName.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold">{userName}</div>
+                  <span className={cn("inline-block rounded-md px-1.5 py-0.5 text-xs font-medium capitalize", roleColors[role] ?? "bg-muted text-muted-foreground")}>
+                    {roleBadge}
+                  </span>
+                </div>
+              </div>
             </div>
             <NavLinks items={navItems} currentPath={location.pathname} />
+            <Separator className="my-3" />
+            <nav className="space-y-0.5">
+              {[
+                { label: t("nav.profile"), path: "/profile", icon: UserCircle },
+                { label: t("nav.notifications"), path: "/notifications", icon: Bell },
+                { label: t("nav.settings"), path: "/settings", icon: Settings },
+              ].map((item) => {
+                const active = location.pathname === item.path;
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
+                      active
+                        ? "bg-primary/10 font-medium text-primary"
+                        : "text-muted-foreground hover:bg-accent/80 hover:text-foreground",
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                    {item.path === "/notifications" && unreadCount ? (
+                      <Badge className="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px]">
+                        {unreadCount}
+                      </Badge>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
           </aside>
         ) : null}
 
@@ -258,18 +319,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="app-container flex flex-col gap-3 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="TRAVEX" className="h-6 w-auto" />
-            <span>{t("app.name")} (c) 2026</span>
+            <span className="font-medium text-foreground">{t("app.name")}</span>
+            <span>© 2026</span>
           </div>
-          <div className="flex flex-wrap gap-4">
-            <Link to="/terms" className="hover:text-foreground">
-              {t("footer.terms")}
-            </Link>
-            <Link to="/privacy" className="hover:text-foreground">
-              {t("footer.privacy")}
-            </Link>
-            <Link to="/contact" className="hover:text-foreground">
-              {t("footer.contact")}
-            </Link>
+          <div className="flex flex-wrap gap-4 text-xs">
+            <span className="text-muted-foreground">B2B hotel booking platform for Algeria</span>
           </div>
         </div>
       </footer>

@@ -68,11 +68,17 @@
   video {
     max-width: 100%;
   }
+
+  /* Smooth focus rings */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .app-shell {
-    @apply min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.10),transparent_32rem),linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)];
+    @apply min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.08),transparent_32rem),linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)];
   }
 
   .app-container {
@@ -84,10 +90,17 @@
   }
 
   .section-y {
-    @apply py-8 sm:py-10 lg:py-12;
+    @apply py-10 sm:py-12 lg:py-16;
   }
 
   .focus-ring {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+}
+
+/* Smooth page transitions */
+@layer utilities {
+  .transition-page {
+    @apply transition-all duration-200 ease-in-out;
   }
 }

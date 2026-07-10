@@ -16,6 +16,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminVerifications from "./pages/AdminVerifications";
 import AdminUsers from "./pages/AdminUsers";
 import AdminClaims from "./pages/AdminClaims";
+import AdminInvoices from "./pages/AdminInvoices";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
@@ -172,6 +173,14 @@ export default function App() {
           element={
             <RoleGuard allowedRoles={["super_admin"]}>
               <AdminClaims />
+            </RoleGuard>
+          }
+        />
+        <Route
+          path="/admin/invoices"
+          element={
+            <RoleGuard allowedRoles={["super_admin"]}>
+              <AdminInvoices />
             </RoleGuard>
           }
         />
