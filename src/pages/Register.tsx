@@ -2,8 +2,12 @@ import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Building2,
+  Check,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
+  FileCheck,
   Plane,
   UploadCloud,
   X,
@@ -11,12 +15,9 @@ import {
 import { z } from "zod";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
@@ -26,25 +27,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TravexLogotype } from "@/components/TravexLogo";
+import { cn } from "@/lib/utils";
 
 const totalSteps = 5;
 
 const step2Schema = z
   .object({
-    fullName: z.string().min(3, "Full name must be at least 3 characters"),
-    email: z.string().email("Enter a valid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    fullName: z.string().min(3, "Le nom complet doit comporter au moins 3 caractères"),
+    email: z.string().email("Entrez une adresse e-mail valide"),
+    password: z.string().min(8, "Le mot de passe doit comporter au moins 8 caractères"),
     confirmPassword: z.string(),
   })
   .refine(d => d.password === d.confirmPassword, {
-    message: "Passwords do not match",
+    message: "Les mots de passe ne correspondent pas",
     path: ["confirmPassword"],
   });
 
 const step3Schema = z.object({
-  legalName: z.string().min(2, "Legal name must be at least 2 characters"),
-  phone: z.string().min(8, "Enter a valid phone number"),
-  wilaya: z.string().min(1, "Please select a wilaya"),
+  legalName: z.string().min(2, "Le nom légal doit comporter au moins 2 caractères"),
+  phone: z.string().min(8, "Entrez un numéro de téléphone valide"),
+  wilaya: z.string().min(1, "Veuillez sélectionner une wilaya"),
 });
 
 type FieldErrors = Record<string, string>;
@@ -54,6 +56,14 @@ function FieldError({ message }: { message?: string }) {
     <p className="mt-1 text-xs text-destructive">{message}</p>
   ) : null;
 }
+
+const STEP_LABELS = [
+  "Type de compte",
+  "Identité",
+  "Entreprise",
+  "Documents",
+  "Vérification",
+];
 
 export default function Register() {
   const { t } = useI18n();
@@ -66,14 +76,14 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [legalName, setLegalName] = useState("");
   const [phone, setPhone] = useState("");
   const [wilaya, setWilaya] = useState("");
   const [taxId, setTaxId] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
-  const [commercialRegistry, setCommercialRegistry] = useState<File | null>(
-    null
-  );
+  const [commercialRegistry, setCommercialRegistry] = useState<File | null>(null);
   const [tourismLicense, setTourismLicense] = useState<File | null>(null);
   const [taxCard, setTaxCard] = useState<File | null>(null);
   const [agreedToPolicy, setAgreedToPolicy] = useState(false);
@@ -88,12 +98,12 @@ export default function Register() {
     onSuccess: () => navigate("/register/submitted"),
     onError: err => {
       if (err.message === "EMAIL_EXISTS")
-        setError("This email is already registered. Please log in.");
+        setError("Cet e-mail est déjà enregistré. Veuillez vous connecter.");
       else if (err.message === "PHONE_INVALID")
-        setError("Phone number is invalid. Use +213XXXXXXXXX format.");
+        setError("Numéro de téléphone invalide. Format : +213XXXXXXXXX");
       else if (err.message === "TAX_OR_LICENSE_REQUIRED")
-        setError("Hotel accounts must provide Tax ID or License Number.");
-      else setError(err.message || "Registration failed. Please try again.");
+        setError("Les comptes hôtel doivent fournir un NIF ou un numéro d'agrément.");
+      else setError(err.message || "Inscription échouée. Réessayez.");
     },
   });
 
@@ -105,12 +115,7 @@ export default function Register() {
   const validateStep = (current: number): boolean => {
     clearErrors();
     if (current === 2) {
-      const result = step2Schema.safeParse({
-        fullName,
-        email,
-        password,
-        confirmPassword,
-      });
+      const result = step2Schema.safeParse({ fullName, email, password, confirmPassword });
       if (!result.success) {
         const errors: FieldErrors = {};
         for (const issue of result.error.issues) {
@@ -133,17 +138,17 @@ export default function Register() {
         return false;
       }
       if (role === "hotel" && !taxId && !licenseNumber) {
-        setError("Hotel accounts must provide Tax ID or License Number");
+        setError("Les comptes hôtel doivent fournir un NIF ou un numéro d'agrément");
         return false;
       }
     }
     if (current === 4) {
       if (!commercialRegistry) {
-        setError("Commercial Registry document is required.");
+        setError("Le Registre de Commerce est requis.");
         return false;
       }
       if (!taxCard) {
-        setError("Tax Card (Carte Fiscale / NIF) document is required.");
+        setError("La Carte Fiscale (NIF) est requise.");
         return false;
       }
     }
@@ -158,7 +163,7 @@ export default function Register() {
   const handleSubmit = () => {
     if (!validateStep(2) || !validateStep(3) || !validateStep(4)) return;
     if (!agreedToPolicy) {
-      setError("You must agree to the Terms of Service and Privacy Policy.");
+      setError("Vous devez accepter les Conditions d'utilisation et la Politique de confidentialité.");
       return;
     }
     registerMutation.mutate({
@@ -175,553 +180,565 @@ export default function Register() {
     });
   };
 
-  const selectedWilayaName = wilayas?.find(
-    w => String(w.code) === wilaya
-  )?.nameFr;
+  const selectedWilayaName = wilayas?.find(w => String(w.code) === wilaya)?.nameFr;
 
   return (
-    <div className="grid min-h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border bg-card shadow-sm lg:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid min-h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:grid-cols-[0.9fr_1.1fr]">
+      {/* Left panel */}
       <div className="hidden bg-slate-950 lg:block">
         <div className="relative h-full min-h-[680px]">
           <img
             src="/media/travex-auth-lobby.webp"
-            alt="Contemporary Algerian hotel lobby"
+            alt="Hôtel algérien contemporain"
             width="1024"
             height="1536"
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#17213e] via-[#17213e]/45 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#17213e] via-[#17213e]/50 to-transparent" />
           <div className="absolute bottom-0 p-10 text-white">
-            <TravexLogotype
-              tone="light"
-              iconClassName="h-12 w-12"
-              className="mb-6"
-            />
-            <h2 className="max-w-md text-3xl font-semibold tracking-tight">
-              Join a verified B2B network.
+            <TravexLogotype tone="light" iconClassName="h-12 w-12" className="mb-6" />
+            <h2 className="max-w-md text-3xl font-bold tracking-tight">
+              Rejoignez un réseau B2B vérifié.
             </h2>
-            <p className="mt-4 max-w-md text-sm leading-6 text-slate-200">
-              Agencies book trusted hotels. Hotels manage inventory and
-              requests. Admins keep the marketplace clean.
+            <p className="mt-4 max-w-md text-sm leading-6 text-slate-300">
+              Les agences réservent dans les hôtels de confiance. Les hôtels gèrent
+              l'inventaire et les demandes. Les admins maintiennent la qualité du marketplace.
             </p>
+            <div className="mt-8 space-y-3">
+              {[
+                { icon: "✓", text: "Vérification manuelle par l'équipe Travex" },
+                { icon: "✓", text: "Tarifs B2B exclusifs et négociés" },
+                { icon: "✓", text: "Plateforme 100% algérienne" },
+              ].map(item => (
+                <div key={item.text} className="flex items-center gap-2.5 text-sm text-slate-300">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/30 text-xs font-bold text-primary">
+                    {item.icon}
+                  </span>
+                  {item.text}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-4 sm:p-8">
-        <Card className="w-full max-w-xl border-0 shadow-none">
-          <CardHeader className="px-0">
-            <TravexLogotype
-              className="mb-4 lg:hidden"
-              iconClassName="h-11 w-11"
-            />
-            <CardTitle className="text-2xl">{t("auth.register")}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {t("auth.step")} {step} {t("auth.of")} {totalSteps}
-            </p>
-            <Progress value={(step / totalSteps) * 100} className="mt-3" />
-          </CardHeader>
-          <CardContent className="px-0">
-            {error ? (
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
+      {/* Right panel */}
+      <div className="flex items-start justify-center overflow-y-auto p-4 pt-8 sm:p-8 sm:pt-10">
+        <div className="w-full max-w-xl">
+          <TravexLogotype className="mb-6 lg:hidden" iconClassName="h-10 w-10" />
 
-            {step === 1 ? (
-              <div className="space-y-4">
-                <Label>{t("auth.role")}</Label>
-                <RadioGroup
-                  value={role}
-                  onValueChange={value => setRole(value as "agency" | "hotel")}
-                  className="grid gap-3 sm:grid-cols-2"
-                >
-                  {[
-                    {
-                      value: "agency",
-                      label: t("auth.role.agency"),
-                      icon: Plane,
-                      desc: "Book hotels at B2B rates",
-                    },
-                    {
-                      value: "hotel",
-                      label: t("auth.role.hotel"),
-                      icon: Building2,
-                      desc: "Manage inventory & requests",
-                    },
-                  ].map(item => (
-                    <Label
-                      key={item.value}
-                      htmlFor={item.value}
-                      className="cursor-pointer rounded-xl border p-4 transition-colors hover:bg-accent has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/10"
+          {/* Step indicator */}
+          <div className="mb-8">
+            <div className="mb-3 flex items-center justify-between">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {t("auth.register")}
+              </h1>
+              <span className="text-xs font-medium text-muted-foreground">
+                {step} / {totalSteps}
+              </span>
+            </div>
+
+            {/* Step bubbles */}
+            <div className="flex items-center gap-0">
+              {Array.from({ length: totalSteps }).map((_, i) => {
+                const n = i + 1;
+                const done = n < step;
+                const active = n === step;
+                return (
+                  <div key={n} className="flex flex-1 items-center">
+                    <div
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all",
+                        done
+                          ? "bg-primary text-primary-foreground"
+                          : active
+                            ? "bg-primary/15 text-primary ring-2 ring-primary ring-offset-1"
+                            : "bg-muted text-muted-foreground/60"
+                      )}
                     >
-                      <RadioGroupItem
-                        value={item.value}
-                        id={item.value}
-                        className="sr-only"
+                      {done ? <Check className="h-3.5 w-3.5" /> : n}
+                    </div>
+                    {i < totalSteps - 1 && (
+                      <div
+                        className={cn(
+                          "h-0.5 flex-1 transition-all",
+                          n < step ? "bg-primary" : "bg-border"
+                        )}
                       />
-                      <item.icon className="mb-3 h-8 w-8 text-primary" />
-                      <span className="block font-medium">{item.label}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">
-                        {item.desc}
-                      </span>
-                    </Label>
-                  ))}
-                </RadioGroup>
-              </div>
-            ) : null}
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
-            {step === 2 ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="fullName">{t("auth.fullName")} *</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={e => {
-                      setFullName(e.target.value);
-                      clearErrors();
-                    }}
-                    placeholder="Ahmed Benali"
-                    className={fieldErrors.fullName ? "border-destructive" : ""}
-                  />
-                  <FieldError message={fieldErrors.fullName} />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="email">{t("auth.email")} *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={e => {
-                      setEmail(e.target.value);
-                      clearErrors();
-                    }}
-                    placeholder="email@example.com"
-                    className={fieldErrors.email ? "border-destructive" : ""}
-                  />
-                  <FieldError message={fieldErrors.email} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="password">{t("auth.password")} *</Label>
+            <div className="mt-2">
+              <p className="text-sm font-semibold text-foreground">
+                {STEP_LABELS[step - 1]}
+              </p>
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mb-5 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <X className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Step 1 — Role */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Quel type de compte souhaitez-vous créer ?
+              </p>
+              <RadioGroup
+                value={role}
+                onValueChange={value => setRole(value as "agency" | "hotel")}
+                className="grid gap-3 sm:grid-cols-2"
+              >
+                {[
+                  {
+                    value: "agency",
+                    label: t("auth.role.agency"),
+                    icon: Plane,
+                    desc: "Réservez des hôtels à des tarifs B2B exclusifs",
+                    color: "text-primary",
+                    bg: "bg-primary/10",
+                  },
+                  {
+                    value: "hotel",
+                    label: t("auth.role.hotel"),
+                    icon: Building2,
+                    desc: "Gérez l'inventaire et les demandes de réservation",
+                    color: "text-sky-600",
+                    bg: "bg-sky-100",
+                  },
+                ].map(item => (
+                  <Label
+                    key={item.value}
+                    htmlFor={item.value}
+                    className={cn(
+                      "relative cursor-pointer overflow-hidden rounded-xl border p-5 transition-all hover:shadow-sm",
+                      role === item.value
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border bg-card hover:border-border/80"
+                    )}
+                  >
+                    <RadioGroupItem
+                      value={item.value}
+                      id={item.value}
+                      className="sr-only"
+                    />
+                    {role === item.value && (
+                      <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-3 w-3" />
+                      </span>
+                    )}
+                    <div
+                      className={cn(
+                        "mb-3 flex h-11 w-11 items-center justify-center rounded-xl",
+                        role === item.value ? item.bg : "bg-muted"
+                      )}
+                    >
+                      <item.icon
+                        className={cn(
+                          "h-5 w-5",
+                          role === item.value ? item.color : "text-muted-foreground"
+                        )}
+                      />
+                    </div>
+                    <span className="block font-semibold text-foreground">{item.label}</span>
+                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                      {item.desc}
+                    </span>
+                  </Label>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
+
+          {/* Step 2 — Identity */}
+          {step === 2 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="fullName" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Nom complet *
+                </Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={e => { setFullName(e.target.value); clearErrors(); }}
+                  placeholder="Ahmed Benali"
+                  className={cn("h-10", fieldErrors.fullName && "border-destructive")}
+                />
+                <FieldError message={fieldErrors.fullName} />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  E-mail *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); clearErrors(); }}
+                  placeholder="email@example.com"
+                  className={cn("h-10", fieldErrors.email && "border-destructive")}
+                />
+                <FieldError message={fieldErrors.email} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Mot de passe *
+                </Label>
+                <div className="relative">
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={e => {
-                      setPassword(e.target.value);
-                      clearErrors();
-                    }}
-                    placeholder="Min. 8 characters"
-                    className={fieldErrors.password ? "border-destructive" : ""}
+                    onChange={e => { setPassword(e.target.value); clearErrors(); }}
+                    placeholder="Min. 8 caractères"
+                    className={cn("h-10 pe-10", fieldErrors.password && "border-destructive")}
                   />
-                  <FieldError message={fieldErrors.password} />
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(v => !v)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword">Confirm password *</Label>
+                <FieldError message={fieldErrors.password} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Confirmation *
+                </Label>
+                <div className="relative">
                   <Input
                     id="confirmPassword"
-                    type="password"
+                    type={showConfirm ? "text" : "password"}
                     value={confirmPassword}
-                    onChange={e => {
-                      setConfirmPassword(e.target.value);
-                      clearErrors();
-                    }}
-                    placeholder="Repeat password"
-                    className={
-                      fieldErrors.confirmPassword ? "border-destructive" : ""
-                    }
+                    onChange={e => { setConfirmPassword(e.target.value); clearErrors(); }}
+                    placeholder="Répétez le mot de passe"
+                    className={cn("h-10 pe-10", fieldErrors.confirmPassword && "border-destructive")}
                   />
-                  <FieldError message={fieldErrors.confirmPassword} />
-                </div>
-              </div>
-            ) : null}
-
-            {step === 3 ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label htmlFor="legalName">{t("auth.legalName")} *</Label>
-                  <Input
-                    id="legalName"
-                    value={legalName}
-                    onChange={e => {
-                      setLegalName(e.target.value);
-                      clearErrors();
-                    }}
-                    placeholder="Company or business name"
-                    className={
-                      fieldErrors.legalName ? "border-destructive" : ""
-                    }
-                  />
-                  <FieldError message={fieldErrors.legalName} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="phone">{t("auth.phone")} *</Label>
-                  <Input
-                    id="phone"
-                    value={phone}
-                    onChange={e => {
-                      setPhone(e.target.value);
-                      clearErrors();
-                    }}
-                    placeholder="+213 5XX XXX XXX"
-                    className={fieldErrors.phone ? "border-destructive" : ""}
-                  />
-                  <FieldError message={fieldErrors.phone} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("auth.wilaya")} *</Label>
-                  <Select
-                    value={wilaya}
-                    onValueChange={v => {
-                      setWilaya(v);
-                      clearErrors();
-                    }}
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowConfirm(v => !v)}
                   >
-                    <SelectTrigger
-                      className={fieldErrors.wilaya ? "border-destructive" : ""}
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <FieldError message={fieldErrors.confirmPassword} />
+              </div>
+            </div>
+          )}
+
+          {/* Step 3 — Business */}
+          {step === 3 && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="legalName" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Nom légal / Raison sociale *
+                </Label>
+                <Input
+                  id="legalName"
+                  value={legalName}
+                  onChange={e => { setLegalName(e.target.value); clearErrors(); }}
+                  placeholder="Nom de l'entreprise"
+                  className={cn("h-10", fieldErrors.legalName && "border-destructive")}
+                />
+                <FieldError message={fieldErrors.legalName} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Téléphone *
+                </Label>
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={e => { setPhone(e.target.value); clearErrors(); }}
+                  placeholder="+213 5XX XXX XXX"
+                  className={cn("h-10", fieldErrors.phone && "border-destructive")}
+                />
+                <FieldError message={fieldErrors.phone} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Wilaya *
+                </Label>
+                <Select
+                  value={wilaya}
+                  onValueChange={v => { setWilaya(v); clearErrors(); }}
+                >
+                  <SelectTrigger className={cn("h-10", fieldErrors.wilaya && "border-destructive")}>
+                    <SelectValue placeholder="Sélectionner une wilaya" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {wilayas?.map(w => (
+                      <SelectItem key={w.code} value={String(w.code)}>
+                        {w.code} – {w.nameFr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError message={fieldErrors.wilaya} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="taxId" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  NIF / Identifiant fiscal {role === "hotel" ? "*" : ""}
+                </Label>
+                <Input
+                  id="taxId"
+                  value={taxId}
+                  onChange={e => setTaxId(e.target.value)}
+                  placeholder="Numéro fiscal"
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="licenseNumber" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Numéro d'agrément {role === "hotel" ? "*" : ""}
+                </Label>
+                <Input
+                  id="licenseNumber"
+                  value={licenseNumber}
+                  onChange={e => setLicenseNumber(e.target.value)}
+                  placeholder="Numéro d'agrément"
+                  className="h-10"
+                />
+              </div>
+              {role === "hotel" && (
+                <p className="sm:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  * Les comptes hôtel doivent fournir au moins un NIF ou un numéro d'agrément.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Step 4 — Documents */}
+          {step === 4 && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Les documents doivent être lisibles pour la vérification manuelle par l'équipe Travex.
+              </p>
+
+              {(
+                [
+                  {
+                    label: "Registre de Commerce",
+                    sublabel: "Requis",
+                    required: true,
+                    file: commercialRegistry,
+                    ref: commercialRegistryRef,
+                    set: setCommercialRegistry,
+                    clearRef: commercialRegistryRef,
+                  },
+                  {
+                    label: "Licence de tourisme et d'exploitation",
+                    sublabel: "Optionnel",
+                    required: false,
+                    file: tourismLicense,
+                    ref: tourismLicenseRef,
+                    set: setTourismLicense,
+                    clearRef: tourismLicenseRef,
+                  },
+                  {
+                    label: "Carte Fiscale / NIF",
+                    sublabel: "Requis",
+                    required: true,
+                    file: taxCard,
+                    ref: taxCardRef,
+                    set: setTaxCard,
+                    clearRef: taxCardRef,
+                  },
+                ] as const
+              ).map(item => (
+                <div key={item.label} className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-foreground">{item.label}</span>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                        item.required
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-muted text-muted-foreground"
+                      )}
                     >
-                      <SelectValue placeholder="Select wilaya" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {wilayas?.map(w => (
-                        <SelectItem key={w.code} value={String(w.code)}>
-                          {w.code} – {w.nameFr}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FieldError message={fieldErrors.wilaya} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="taxId">
-                    {t("auth.taxId")} {role === "hotel" ? "*" : ""}
-                  </Label>
-                  <Input
-                    id="taxId"
-                    value={taxId}
-                    onChange={e => setTaxId(e.target.value)}
-                    placeholder="NIF / Numéro fiscal"
+                      {item.sublabel}
+                    </span>
+                  </div>
+                  <div
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed p-4 transition-colors",
+                      item.file
+                        ? "border-primary/40 bg-primary/5"
+                        : "border-border hover:border-primary/40 hover:bg-muted/30"
+                    )}
+                    onClick={() => item.ref.current?.click()}
+                  >
+                    {item.file ? (
+                      <>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                          <FileCheck className="h-5 w-5" />
+                        </div>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                          {item.file.name}
+                        </span>
+                        <button
+                          type="button"
+                          className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                          onClick={e => {
+                            e.stopPropagation();
+                            item.set(null);
+                            if (item.clearRef.current) item.clearRef.current.value = "";
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                          <UploadCloud className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Cliquer pour téléverser
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            PDF, JPG ou PNG (Max 5 Mo)
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    ref={item.ref}
+                    type="file"
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) item.set(f);
+                    }}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="licenseNumber">
-                    {t("auth.licenseNumber")} {role === "hotel" ? "*" : ""}
-                  </Label>
-                  <Input
-                    id="licenseNumber"
-                    value={licenseNumber}
-                    onChange={e => setLicenseNumber(e.target.value)}
-                    placeholder="Numéro d'agrément"
-                  />
-                </div>
-                {role === "hotel" ? (
-                  <p className="sm:col-span-2 text-xs text-muted-foreground">
-                    * Hotel accounts must provide at least Tax ID or License
-                    Number.
-                  </p>
-                ) : null}
+              ))}
+
+              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3.5">
+                <span className="mt-0.5 text-amber-500">⚠</span>
+                <p className="text-xs leading-5 text-amber-800">
+                  Votre compte entrera en état « En attente de révision » jusqu'à ce que les documents soient vérifiés par l'équipe Travex. Cela prend généralement 1–2 jours ouvrables.
+                </p>
               </div>
-            ) : null}
+            </div>
+          )}
 
-            {step === 4 ? (
-              <div className="space-y-5">
-                <div>
-                  <h3 className="font-semibold text-lg">
-                    Document Upload Center
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Required documents for account verification
-                  </p>
-                </div>
+          {/* Step 5 — Review */}
+          {step === 5 && (
+            <div className="space-y-5">
+              <p className="text-sm text-muted-foreground">
+                Vérifiez vos informations avant de soumettre votre demande.
+              </p>
 
-                {/* Commercial Registry — REQUIRED */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <Label>Commercial Registry (Registre du Commerce)</Label>
-                    <span className="text-xs font-medium text-destructive uppercase tracking-wide">
-                      Required
-                    </span>
-                  </div>
-                  <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors"
-                    onClick={() => commercialRegistryRef.current?.click()}
-                  >
-                    {commercialRegistry ? (
-                      <div className="flex items-center justify-center gap-2 text-sm">
-                        <span className="truncate max-w-[240px] font-medium">
-                          {commercialRegistry.name}
-                        </span>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setCommercialRegistry(null);
-                            if (commercialRegistryRef.current)
-                              commercialRegistryRef.current.value = "";
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <UploadCloud className="h-8 w-8" />
-                        <span className="text-sm">Click to upload</span>
-                        <span className="text-xs">
-                          PDF, JPG or PNG (Max 5MB)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={commercialRegistryRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    className="hidden"
-                    onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (f) setCommercialRegistry(f);
-                    }}
-                  />
-                </div>
-
-                {/* Tourism & Operating License — Optional */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <Label>Tourism &amp; Operating License</Label>
-                    <span className="text-xs text-muted-foreground">
-                      Optional
-                    </span>
-                  </div>
-                  <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors"
-                    onClick={() => tourismLicenseRef.current?.click()}
-                  >
-                    {tourismLicense ? (
-                      <div className="flex items-center justify-center gap-2 text-sm">
-                        <span className="truncate max-w-[240px] font-medium">
-                          {tourismLicense.name}
-                        </span>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setTourismLicense(null);
-                            if (tourismLicenseRef.current)
-                              tourismLicenseRef.current.value = "";
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <UploadCloud className="h-8 w-8" />
-                        <span className="text-sm">Click to upload</span>
-                        <span className="text-xs">
-                          PDF, JPG or PNG (Max 5MB)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={tourismLicenseRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    className="hidden"
-                    onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (f) setTourismLicense(f);
-                    }}
-                  />
-                </div>
-
-                {/* Tax Card — REQUIRED */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <Label>Tax Card (Carte Fiscale / NIF)</Label>
-                    <span className="text-xs font-medium text-destructive uppercase tracking-wide">
-                      Required
-                    </span>
-                  </div>
-                  <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors"
-                    onClick={() => taxCardRef.current?.click()}
-                  >
-                    {taxCard ? (
-                      <div className="flex items-center justify-center gap-2 text-sm">
-                        <span className="truncate max-w-[240px] font-medium">
-                          {taxCard.name}
-                        </span>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setTaxCard(null);
-                            if (taxCardRef.current)
-                              taxCardRef.current.value = "";
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                        <UploadCloud className="h-8 w-8" />
-                        <span className="text-sm">Click to upload</span>
-                        <span className="text-xs">
-                          PDF, JPG or PNG (Max 5MB)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={taxCardRef}
-                    type="file"
-                    accept="image/*,.pdf"
-                    className="hidden"
-                    onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (f) setTaxCard(f);
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 p-4">
-                  <span className="text-amber-500 text-lg leading-none">
-                    ⚠️
-                  </span>
-                  <p className="text-xs leading-5 text-amber-800 dark:text-amber-300">
-                    Files must be clear and readable for admin manual approval.
-                    Your account will enter a locked &apos;Awaiting Review&apos;
-                    state until the files are verified.
-                  </p>
-                </div>
-              </div>
-            ) : null}
-
-            {step === 5 ? (
-              <div className="space-y-4">
-                <h3 className="font-semibold">Review your information</h3>
-                <div className="grid gap-3 rounded-xl border bg-muted/40 p-4 text-sm sm:grid-cols-2">
-                  {[
+              <div className="rounded-xl border border-border bg-muted/30">
+                <div className="grid gap-0 divide-y divide-border">
+                  {(
                     [
-                      "Account type",
-                      role === "agency" ? "Travel Agency" : "Hotel",
-                    ],
-                    ["Full name", fullName],
-                    ["Email", email],
-                    ["Legal name", legalName],
-                    ["Phone", phone],
-                    [
-                      "Wilaya",
-                      selectedWilayaName
-                        ? `${wilaya} – ${selectedWilayaName}`
-                        : wilaya || "-",
-                    ],
-                    ...(taxId ? [["Tax ID", taxId]] : []),
-                    ...(licenseNumber ? [["License", licenseNumber]] : []),
-                    [
-                      "Commercial Registry",
-                      commercialRegistry ? commercialRegistry.name : "—",
-                    ],
-                    [
-                      "Tourism License",
-                      tourismLicense ? tourismLicense.name : "Not provided",
-                    ],
-                    ["Tax Card", taxCard ? taxCard.name : "—"],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      ["Type de compte", role === "agency" ? "Agence de voyage" : "Hôtel"],
+                      ["Nom complet", fullName],
+                      ["E-mail", email],
+                      ["Nom légal", legalName],
+                      ["Téléphone", phone],
+                      ["Wilaya", selectedWilayaName ? `${wilaya} – ${selectedWilayaName}` : wilaya || "—"],
+                      ...(taxId ? [["NIF fiscal", taxId]] : []),
+                      ...(licenseNumber ? [["Agrément", licenseNumber]] : []),
+                      ["Registre de Commerce", commercialRegistry ? commercialRegistry.name : "—"],
+                      ["Licence de tourisme", tourismLicense ? tourismLicense.name : "Non fourni"],
+                      ["Carte Fiscale", taxCard ? taxCard.name : "—"],
+                    ] as [string, string][]
+                  ).map(([label, value]) => (
+                    <div key={label} className="flex items-start gap-4 px-4 py-3">
+                      <span className="w-40 shrink-0 text-xs font-medium text-muted-foreground">
                         {label}
-                      </div>
-                      <div className="mt-1 break-words font-medium">
-                        {value}
-                      </div>
+                      </span>
+                      <span className="min-w-0 break-words text-sm font-medium text-foreground">
+                        {value || "—"}
+                      </span>
                     </div>
                   ))}
                 </div>
-
-                <div className="flex items-start gap-3 pt-1">
-                  <input
-                    id="agreeToPolicy"
-                    type="checkbox"
-                    checked={agreedToPolicy}
-                    onChange={e => {
-                      setAgreedToPolicy(e.target.checked);
-                      clearErrors();
-                    }}
-                    className="mt-0.5 h-4 w-4 cursor-pointer accent-primary"
-                  />
-                  <Label
-                    htmlFor="agreeToPolicy"
-                    className="text-sm leading-5 cursor-pointer font-normal"
-                  >
-                    I agree to the{" "}
-                    <span className="font-medium text-primary underline underline-offset-2">
-                      Terms of Service
-                    </span>{" "}
-                    and{" "}
-                    <span className="font-medium text-primary underline underline-offset-2">
-                      Privacy Policy
-                    </span>
-                  </Label>
-                </div>
-
-                <p className="text-xs leading-5 text-muted-foreground">
-                  By submitting, you confirm the information is accurate and
-                  ready for admin review.
-                </p>
               </div>
-            ) : null}
 
-            <div className="mt-6 flex items-center justify-between gap-3">
-              {step > 1 ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    clearErrors();
-                    setStep(v => Math.max(1, v - 1));
-                  }}
+              <div className="flex items-start gap-3">
+                <input
+                  id="agreeToPolicy"
+                  type="checkbox"
+                  checked={agreedToPolicy}
+                  onChange={e => { setAgreedToPolicy(e.target.checked); clearErrors(); }}
+                  className="mt-0.5 h-4 w-4 cursor-pointer rounded accent-primary"
+                />
+                <Label
+                  htmlFor="agreeToPolicy"
+                  className="cursor-pointer text-sm leading-5 font-normal text-foreground"
                 >
-                  <ChevronLeft className="me-1 h-4 w-4" />
-                  {t("back")}
-                </Button>
-              ) : (
-                <span />
-              )}
-              {step < totalSteps ? (
-                <Button onClick={nextStep}>
-                  {t("next")}
-                  <ChevronRight className="ms-1 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={registerMutation.isPending || !agreedToPolicy}
-                >
-                  {registerMutation.isPending
-                    ? t("loading")
-                    : t("auth.register")}
-                </Button>
-              )}
+                  J'accepte les{" "}
+                  <span className="font-medium text-primary underline underline-offset-2">
+                    Conditions d'utilisation
+                  </span>{" "}
+                  et la{" "}
+                  <span className="font-medium text-primary underline underline-offset-2">
+                    Politique de confidentialité
+                  </span>
+                </Label>
+              </div>
             </div>
+          )}
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              {t("auth.hasAccount")}{" "}
-              <Link
-                to="/login"
-                className="font-medium text-primary hover:underline"
+          {/* Navigation */}
+          <div className="mt-6 flex items-center justify-between gap-3">
+            {step > 1 ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  clearErrors();
+                  setStep(v => Math.max(1, v - 1));
+                }}
               >
-                {t("auth.login")}
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+                <ChevronLeft className="me-1 h-4 w-4" />
+                {t("back")}
+              </Button>
+            ) : (
+              <span />
+            )}
+            {step < totalSteps ? (
+              <Button onClick={nextStep}>
+                {t("next")}
+                <ChevronRight className="ms-1 h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleSubmit}
+                disabled={registerMutation.isPending || !agreedToPolicy}
+              >
+                {registerMutation.isPending ? t("loading") : t("auth.register")}
+              </Button>
+            )}
+          </div>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            {t("auth.hasAccount")}{" "}
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              {t("auth.login")}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

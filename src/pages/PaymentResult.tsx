@@ -11,12 +11,6 @@ import { trpc } from "@/providers/trpc";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type ResultState = "processing" | "confirmed" | "failed" | "cancelled" | "refund_required";
@@ -73,8 +67,8 @@ export default function PaymentResult() {
       />
 
       <div className="flex justify-center">
-        <Card className="w-full max-w-lg">
-          <CardContent className="p-8 text-center">
+        <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-8 text-center">
             {resultState === "processing" ? (
               <>
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
@@ -199,32 +193,32 @@ export default function PaymentResult() {
                 </Button>
               </>
             ) : null}
-          </CardContent>
+          </div>
 
           {booking && resultState !== "processing" ? (
-            <CardHeader className="border-t pt-4">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Booking details
-              </CardTitle>
-              <div className="space-y-1 text-sm">
+            <div className="border-t border-border px-8 py-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Détails de la réservation
+              </p>
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Hotel</span>
-                  <span>{hotel.name || "—"}</span>
+                  <span className="text-muted-foreground">Hôtel</span>
+                  <span className="font-medium">{hotel.name || "—"}</span>
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-muted-foreground">Dates</span>
-                  <span>
+                  <span className="font-medium">
                     {booking.checkIn as string} → {booking.checkOut as string}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Room</span>
-                  <span>{booking.roomNameSnapshot as string}</span>
+                  <span className="text-muted-foreground">Chambre</span>
+                  <span className="font-medium">{booking.roomNameSnapshot as string}</span>
                 </div>
               </div>
-            </CardHeader>
+            </div>
           ) : null}
-        </Card>
+        </div>
       </div>
     </div>
   );

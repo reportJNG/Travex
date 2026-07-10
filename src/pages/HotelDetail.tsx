@@ -29,7 +29,6 @@ import { EmptyState } from "@/components/app/StateBlock";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -194,11 +193,11 @@ export default function HotelDetail() {
   ];
 
   const bookingPanel = (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg">{t("booking.title")}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="border-b border-border/60 px-5 py-4">
+        <h3 className="font-semibold text-foreground text-lg">{t("booking.title")}</h3>
+      </div>
+      <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs">{t("booking.checkIn")}</Label>
@@ -295,8 +294,8 @@ export default function HotelDetail() {
             to make a booking.
           </p>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 
   return (
@@ -326,8 +325,8 @@ export default function HotelDetail() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-6">
           {/* Info card */}
-          <Card>
-            <CardContent className="p-5 sm:p-6">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="p-5 sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -347,15 +346,15 @@ export default function HotelDetail() {
               {hotel.description ? (
                 <p className="mt-5 text-sm leading-7 text-muted-foreground">{hotel.description as string}</p>
               ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Amenities */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("hotel.amenities")}</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="border-b border-border/60 px-5 py-4">
+              <h3 className="font-semibold text-foreground">{t("hotel.amenities")}</h3>
+            </div>
+            <div className="p-5">
               {amenities.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {amenities.map((item) => (
@@ -368,16 +367,16 @@ export default function HotelDetail() {
               ) : (
                 <p className="text-sm text-muted-foreground">No amenities listed yet.</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Rooms */}
           {!isSeeded ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("hotel.rooms")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="border-b border-border/60 px-5 py-4">
+                <h3 className="font-semibold text-foreground">{t("hotel.rooms")}</h3>
+              </div>
+              <div className="p-5 space-y-3">
                 {activeRooms.length > 0 ? (
                   activeRooms.map((room) => {
                     const available = Number(room.availableCount || 0);
@@ -418,16 +417,16 @@ export default function HotelDetail() {
                 ) : (
                   <EmptyState title="No rooms available" description="This hotel has not published room inventory yet." />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : null}
 
           {/* Contact */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("hotel.contact")}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="border-b border-border/60 px-5 py-4">
+              <h3 className="font-semibold text-foreground">{t("hotel.contact")}</h3>
+            </div>
+            <div className="p-5 grid gap-3 sm:grid-cols-2">
               {contacts.map(({ present, href, icon: Icon, label }, index) =>
                 present ? (
                   <a
@@ -442,8 +441,8 @@ export default function HotelDetail() {
                   </a>
                 ) : null
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {!isSeeded ? (

@@ -5,7 +5,7 @@ import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
@@ -38,8 +38,8 @@ export default function AdminClaims() {
             const seededHotel = claim.seededHotel as Record<string, unknown> | undefined;
             const claimant = claim.claimant as Record<string, unknown> | undefined;
             return (
-              <Card key={claim.id as string}>
-                <CardContent className="space-y-4 p-4 sm:p-5">
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="space-y-4 p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Seeded hotel</div>
@@ -87,8 +87,8 @@ export default function AdminClaims() {
                       </ConfirmAction>
                     </div>
                   ) : null}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>

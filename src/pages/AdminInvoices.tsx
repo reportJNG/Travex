@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatCard } from "@/components/app/StatCard";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/i18n";
@@ -38,14 +38,14 @@ function GenerateInvoicesForm() {
   });
 
   return (
-    <Card className="mb-6 border-primary/20 bg-primary/5">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+    <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5">
+      <div className="px-5 pt-5 pb-0">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Calendar className="h-5 w-5 text-primary" />
           Generate monthly invoices
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </h3>
+      </div>
+      <div className="px-5 py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="space-y-1.5">
             <Label>Year</Label>
@@ -93,8 +93,8 @@ function GenerateInvoicesForm() {
           Generates commission invoices at 5% rate for all confirmed bookings in
           the selected period.
         </p>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -206,8 +206,8 @@ export default function AdminInvoices() {
               const hotel = inv.hotel as Record<string, unknown> | undefined;
               const period = `${inv.periodYear}-${String(inv.periodMonth).padStart(2, "0")}`;
               return (
-                <Card key={inv.id as string} className="overflow-hidden">
-                  <CardContent className="p-4 sm:p-5">
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                  <div className="p-4 sm:p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -278,22 +278,22 @@ export default function AdminInvoices() {
                       </StatusBadge>
                     </div>
                     <MarkPaidDialog invoice={inv} />
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               );
             })}
           </div>
         </>
       ) : (
-        <Card>
-          <CardContent className="p-6">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-6">
             <EmptyState
               icon={<FileText className="h-6 w-6" />}
               title="No invoices yet"
               description="Use the form above to generate monthly invoices for all hotels."
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

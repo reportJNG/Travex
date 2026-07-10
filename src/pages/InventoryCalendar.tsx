@@ -15,12 +15,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Sheet,
   SheetContent,
   SheetFooter,
@@ -237,40 +231,40 @@ export default function InventoryCalendar() {
 
       {/* Availability summary */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-4">
             <div className="text-xs text-muted-foreground">Total capacity</div>
             <div className="mt-1 text-2xl font-bold">{totalCapacity}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-4">
             <div className="text-xs text-muted-foreground">Available</div>
             <div className="mt-1 text-2xl font-bold text-emerald-600">{available}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-4">
             <div className="text-xs text-muted-foreground">Held/Booked</div>
             <div className="mt-1 text-2xl font-bold text-amber-600">{totalCapacity - available}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-4">
             <div className="text-xs text-muted-foreground">Rooms</div>
             <div className="mt-1 text-2xl font-bold">{rooms.length}</div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Calendar grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border/60 px-5 py-4">
+          <h3 className="font-semibold text-foreground">
             {MONTH_NAMES[month]} {year}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
+        </div>
+        <div className="p-5">
           <div className="grid grid-cols-7 gap-1">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div
@@ -314,16 +308,16 @@ export default function InventoryCalendar() {
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Room breakdown */}
       {rooms.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Room inventory</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="border-b border-border/60 px-5 py-4">
+            <h3 className="font-semibold text-foreground">Room inventory</h3>
+          </div>
+          <div className="p-5">
             <div className="space-y-3">
               {rooms.map((room) => {
                 const cap = Number(room.totalCapacity || 0);
@@ -361,8 +355,8 @@ export default function InventoryCalendar() {
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       {/* Block sheet */}

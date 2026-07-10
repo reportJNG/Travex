@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Globe, Mail, Phone, Save, UserCircle } from "lucide-react";
+import { Globe, Mail, Phone, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,7 +37,7 @@ export default function Profile() {
 
   const updateMutation = trpc.auth.updateProfile.useMutation({
     onSuccess: () => {
-      toast.success("Profile updated");
+      toast.success("Profil mis à jour");
       utils.auth.me.invalidate();
     },
     onError: err => toast.error(err.message),
@@ -52,115 +51,177 @@ export default function Profile() {
     });
   };
 
+  const initials = effectiveFullName
+    .split(" ")
+    .slice(0, 2)
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase() || "?";
+
+  const roleLabel: Record<string, string> = {
+    agency: "Agence de voyage",
+    hotel: "Hôtel",
+    super_admin: "Administrateur",
+  };
+
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow="Account"
+        eyebrow="Compte"
         title={t("nav.profile")}
-        description="Keep your identity, contact information, and preferred language up to date."
+        description="Gardez votre identité, vos coordonnées et votre langue préférée à jour."
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <UserCircle className="h-4 w-4 text-muted-foreground" />
-                Full name
-              </Label>
+      {/* Avatar + Identity */}
+      <div className="mb-5 rounded-xl border border-border bg-card p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-xl font-bold text-primary">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg font-bold tracking-tight text-foreground">
+                {effectiveFullName || "Mon compte"}
+              </h2>
+              {(user as any)?.status && (
+                <StatusBadge status={(user as any).status}>
+                  {t(`status.${(user as any).status}`)}
+                </StatusBadge>
+              )}
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {(user as any)?.email || ""}
+            </p>
+            {profile?.legalName && (
+              <p className="mt-0.5 text-sm font-medium text-foreground/70">
+                {profile.legalName} ·{" "}
+                <span className="font-normal text-muted-foreground">
+                  {roleLabel[(user as any)?.role] || (user as any)?.role}
+                </span>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Editable fields */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="mb-4 text-sm font-semibold text-foreground">
+          Informations personnelles
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="uppercase tracking-wider">Nom complet</span>
+            </Label>
+            <Input
+              value={effectiveFullName}
+              onChange={event => setFullName(event.target.value)}
+              placeholder={profile?.fullName || (user as any)?.name || "Ahmed Benali"}
+              className="h-10"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <span className="uppercase tracking-wider">Email</span>
+            </Label>
+            <div className="relative">
+              <Mail className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                value={effectiveFullName}
-                onChange={event => setFullName(event.target.value)}
-                placeholder={profile?.fullName || (user as any)?.name || ""}
+                value={(user as any)?.email || ""}
+                disabled
+                className="h-10 ps-9 text-muted-foreground"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                Email
-              </Label>
-              <Input value={(user as any)?.email || ""} disabled />
-            </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                Phone
-              </Label>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Téléphone
+            </Label>
+            <div className="relative">
+              <Phone className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={effectivePhone}
                 onChange={event => setPhone(event.target.value)}
-                placeholder={profile?.phone || "+213555123456"}
+                placeholder="+213 5XX XXX XXX"
+                className="h-10 ps-9"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <Globe className="h-4 w-4 text-muted-foreground" />
-                Preferred language
-              </Label>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Langue préférée
+            </Label>
+            <div className="relative">
+              <Globe className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Select
                 value={effectiveLocale}
                 onValueChange={value => setLocale(value as "fr" | "ar" | "en")}
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-10 ps-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="fr">Francais</SelectItem>
+                  <SelectItem value="fr">Français</SelectItem>
                   <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="ar">Arabic</SelectItem>
+                  <SelectItem value="ar">العربية</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+        </div>
 
-          {profile?.legalName ? (
-            <div className="rounded-lg border bg-muted/40 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold">Legal information</h3>
-                <StatusBadge status={(user as any)?.status || "approved"}>
-                  {t(`status.${(user as any)?.status || "approved"}`)}
-                </StatusBadge>
-              </div>
-              <div className="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                  <span className="text-muted-foreground">Legal name</span>
-                  <p className="font-medium">{profile.legalName}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Role</span>
-                  <p className="font-medium capitalize">
-                    {(user as any)?.role?.replace("_", " ")}
-                  </p>
-                </div>
-                {profile?.taxId ? (
-                  <div>
-                    <span className="text-muted-foreground">Tax ID</span>
-                    <p className="font-medium">{profile.taxId}</p>
-                  </div>
-                ) : null}
-                {profile?.licenseNumber ? (
-                  <div>
-                    <span className="text-muted-foreground">License</span>
-                    <p className="font-medium">{profile.licenseNumber}</p>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-
+        <div className="mt-5 flex items-center justify-end gap-3 border-t border-border/60 pt-4">
           <Button
-            className="w-full sm:w-auto"
             onClick={handleSave}
             disabled={updateMutation.isPending}
           >
             <Save className="me-2 h-4 w-4" />
-            {updateMutation.isPending ? "Saving..." : "Save changes"}
+            {updateMutation.isPending ? "Enregistrement…" : "Enregistrer les modifications"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {/* Legal info section */}
+      {profile?.legalName && (
+        <div className="mt-5 rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">
+            Informations légales
+          </h3>
+          <div className="grid gap-4 text-sm sm:grid-cols-2">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Nom légal
+              </span>
+              <p className="mt-1 font-medium">{profile.legalName}</p>
+            </div>
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Rôle
+              </span>
+              <p className="mt-1 font-medium">
+                {roleLabel[(user as any)?.role] || (user as any)?.role}
+              </p>
+            </div>
+            {profile?.taxId && (
+              <div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  NIF / Identifiant fiscal
+                </span>
+                <p className="mt-1 font-mono text-sm">{profile.taxId}</p>
+              </div>
+            )}
+            {profile?.licenseNumber && (
+              <div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Numéro d'agrément
+                </span>
+                <p className="mt-1 font-mono text-sm">{profile.licenseNumber}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -101,8 +101,8 @@ export default function AdminUsers() {
         description="Search accounts, review roles, and manage access without breaking the marketplace flow."
       />
 
-      <Card className="mb-6">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+      <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card">
+        <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground rtl:left-auto rtl:right-3" />
             <Input
@@ -124,11 +124,11 @@ export default function AdminUsers() {
               ))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="p-0">
           {isLoading ? (
             <div className="p-4">
               <LoadingCards count={4} />
@@ -178,8 +178,8 @@ export default function AdminUsers() {
                 {users.map((user: Record<string, unknown>) => {
                   const profile = user.profile as Record<string, unknown> | undefined;
                   return (
-                    <Card key={user.id as string}>
-                      <CardContent className="space-y-3 p-4">
+                    <div key={user.id as string} className="overflow-hidden rounded-xl border border-border bg-card">
+                      <div className="space-y-3 p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h3 className="truncate font-semibold">{(user.name as string) || "-"}</h3>
@@ -195,8 +195,8 @@ export default function AdminUsers() {
                           </span>
                           {renderActions(user)}
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -206,8 +206,8 @@ export default function AdminUsers() {
               <EmptyState icon={<Users className="h-6 w-6" />} title="No users found" description="Try a different search or role filter." />
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

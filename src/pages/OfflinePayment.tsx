@@ -17,12 +17,6 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -178,25 +172,23 @@ export default function OfflinePayment() {
   if (alreadySubmitted && !submitted) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Card className="w-full max-w-lg text-center">
-          <CardContent className="px-6 py-10">
-            <CheckCircle className="mx-auto mb-4 h-16 w-16 text-emerald-500" />
-            <h1 className="text-2xl font-semibold">Booking confirmed</h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Your payment has been verified and your booking is confirmed.
-            </p>
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-              <Button asChild>
-                <Link to={`/booking/${bookingId}/confirmation`}>
-                  View confirmation
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/dashboard">Dashboard</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card px-6 py-10 text-center">
+          <CheckCircle className="mx-auto mb-4 h-16 w-16 text-emerald-500" />
+          <h1 className="text-2xl font-bold tracking-tight">Réservation confirmée</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Votre paiement a été vérifié et votre réservation est confirmée.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button asChild>
+              <Link to={`/booking/${bookingId}/confirmation`}>
+                Voir la confirmation
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/dashboard">Tableau de bord</Link>
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -250,14 +242,12 @@ export default function OfflinePayment() {
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         {/* Payment instructions */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Info className="h-5 w-5 text-primary" />
-                Payment instructions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex items-center gap-2 border-b border-border/60 px-5 py-4 font-semibold text-foreground">
+              <Info className="h-5 w-5 text-primary" />
+              Instructions de paiement
+            </div>
+            <div className="space-y-5 p-5">
               <Alert>
                 <AlertDescription className="text-sm">
                   Transfer the exact amount below to the following account.
@@ -320,19 +310,17 @@ export default function OfflinePayment() {
                   business hours.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Receipt upload */}
           {!isExpired && !submitted ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Upload className="h-5 w-5 text-primary" />
-                  Upload payment receipt
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-4 font-semibold text-foreground">
+                <Upload className="h-5 w-5 text-primary" />
+                Soumettre le reçu de paiement
+              </div>
+              <div className="space-y-4 p-5">
                 <p className="text-sm text-muted-foreground">
                   Upload a clear photo or scan of your CCP/bank transfer
                   receipt. Accepted formats: PDF, JPEG, PNG (max 10 MB).
@@ -387,18 +375,18 @@ export default function OfflinePayment() {
                     )}
                   </Button>
                 ) : null}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : null}
         </div>
 
         {/* Booking summary */}
         <aside>
-          <Card className="sticky top-24">
-            <CardHeader>
-              <CardTitle>Booking summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="sticky top-24 overflow-hidden rounded-xl border border-border bg-card">
+            <div className="border-b border-border/60 px-5 py-4">
+              <h3 className="font-semibold text-foreground">Récapitulatif</h3>
+            </div>
+            <div className="space-y-4 p-5">
               <div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold">{hotelName}</span>
@@ -452,8 +440,8 @@ export default function OfflinePayment() {
               <Badge variant="secondary" className="w-full justify-center">
                 Offline bank transfer
               </Badge>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="mt-4 flex flex-col gap-2">
             <Button variant="outline" asChild className="w-full">

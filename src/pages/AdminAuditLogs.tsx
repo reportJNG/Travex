@@ -2,7 +2,7 @@ import { Clock, FileText, RefreshCw } from "lucide-react";
 import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
@@ -52,8 +52,8 @@ export default function AdminAuditLogs() {
       {isLoading ? (
         <LoadingCards count={6} />
       ) : logs && logs.length > 0 ? (
-        <Card>
-          <CardContent className="p-0">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-0">
             <div className="divide-y">
               {(logs as Record<string, unknown>[]).map((log) => {
                 const actor = log.actor as Record<string, unknown> | undefined;
@@ -95,8 +95,8 @@ export default function AdminAuditLogs() {
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}

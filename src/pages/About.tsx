@@ -10,7 +10,6 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const howItWorks = [
@@ -150,17 +149,15 @@ export default function About() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {values.map(v => (
-              <Card key={v.title} className="transition-shadow hover:shadow-md">
-                <CardContent className="p-5">
-                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <v.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-semibold">{v.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {v.desc}
-                  </p>
-                </CardContent>
-              </Card>
+              <div key={v.title} className="rounded-xl border border-border bg-card p-5 transition-all hover:shadow-md">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <v.icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold">{v.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {v.desc}
+                </p>
+              </div>
             ))}
           </div>
         </div>
@@ -184,20 +181,18 @@ export default function About() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {howItWorks.map(item => (
-              <Card
+              <div
                 key={item.step}
-                className="relative overflow-hidden transition-shadow hover:shadow-md"
+                className="relative overflow-hidden rounded-xl border border-border bg-card p-5 transition-all hover:shadow-md"
               >
-                <CardContent className="p-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                    {item.step}
-                  </div>
-                  <h3 className="mt-3 font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {item.desc}
-                  </p>
-                </CardContent>
-              </Card>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                  {item.step}
+                </div>
+                <h3 className="mt-3 font-semibold">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {item.desc}
+                </p>
+              </div>
             ))}
           </div>
         </div>
@@ -239,27 +234,25 @@ export default function About() {
               </a>
             </div>
           </div>
-          <Card>
-            <CardContent className="p-8">
-              <h3 className="text-lg font-semibold">Ready to join?</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                Whether you run a travel agency or manage a hotel, Travex is
-                built for you. Create your account today and get verified within
-                24 hours.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Button asChild className="flex-1">
-                  <Link to="/register">
-                    Create account
-                    <ArrowRight className="ms-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild className="flex-1">
-                  <Link to="/marketplace">Browse hotels</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-border bg-card p-8">
+            <h3 className="text-lg font-semibold">Ready to join?</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Whether you run a travel agency or manage a hotel, Travex is
+              built for you. Create your account today and get verified within
+              24 hours.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Button asChild className="flex-1">
+                <Link to="/register">
+                  Create account
+                  <ArrowRight className="ms-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" asChild className="flex-1">
+                <Link to="/marketplace">Browse hotels</Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
     </div>

@@ -5,7 +5,7 @@ import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import {
   Sheet,
@@ -92,8 +92,8 @@ export default function AdminVerifications() {
             const licenseNumber = typeof profile?.licenseNumber === "string" ? profile.licenseNumber : "";
             const phone = typeof profile?.phone === "string" ? profile.phone : "";
             return (
-              <Card key={userId}>
-                <CardContent className="p-4 sm:p-5">
+              <div key={userId} className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="p-4 sm:p-5">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1 space-y-4">
                       <div className="flex flex-wrap items-center gap-2">
@@ -153,8 +153,8 @@ export default function AdminVerifications() {
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>

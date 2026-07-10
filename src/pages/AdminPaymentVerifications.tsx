@@ -10,12 +10,6 @@ import { EmptyState } from "@/components/app/StateBlock";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -111,11 +105,11 @@ export default function AdminPaymentVerifications() {
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment receipts</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Reçus de paiement</h3>
+        </div>
+        <div className="p-5">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="pending">
@@ -214,8 +208,8 @@ export default function AdminPaymentVerifications() {
                     {pending.map((booking: any) => {
                       const total = Number(booking.totalPrice || 0);
                       return (
-                        <Card key={booking.id}>
-                          <CardContent className="space-y-3 p-4">
+                        <div key={booking.id} className="overflow-hidden rounded-xl border border-border bg-card">
+                          <div className="space-y-3 p-4">
                             <div className="flex items-start justify-between gap-3">
                               <div>
                                 <div className="font-mono text-xs text-muted-foreground">
@@ -246,8 +240,8 @@ export default function AdminPaymentVerifications() {
                                 Review
                               </Button>
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -255,8 +249,8 @@ export default function AdminPaymentVerifications() {
               )}
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Review sheet */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -268,8 +262,8 @@ export default function AdminPaymentVerifications() {
           {selectedBooking ? (
             <div className="mt-6 flex flex-col gap-5 px-4">
               {/* Booking snapshot */}
-              <Card>
-                <CardContent className="space-y-3 pt-5 text-sm">
+              <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="space-y-3 pt-5 px-5 pb-5 text-sm">
                   <div className="flex justify-between gap-3">
                     <span className="text-muted-foreground">Reference</span>
                     <span className="font-mono font-medium">
@@ -310,8 +304,8 @@ export default function AdminPaymentVerifications() {
                       DZD
                     </span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
               {/* Receipt preview */}
               {selectedBooking.voucherPath ? (

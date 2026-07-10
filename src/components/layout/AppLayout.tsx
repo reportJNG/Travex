@@ -56,26 +56,27 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-const roleColors: Record<string, string> = {
-  agency: "bg-sky-100 text-sky-700",
-  hotel: "bg-primary/10 text-primary",
-  super_admin: "bg-violet-100 text-violet-700",
+const roleAccent: Record<string, { badge: string; avatar: string }> = {
+  agency: {
+    badge: "bg-sky-100 text-sky-700 border-sky-200",
+    avatar: "bg-sky-100 text-sky-700",
+  },
+  hotel: {
+    badge: "bg-primary/10 text-primary border-primary/20",
+    avatar: "bg-primary/10 text-primary",
+  },
+  super_admin: {
+    badge: "bg-violet-100 text-violet-700 border-violet-200",
+    avatar: "bg-violet-100 text-violet-700",
+  },
 };
 
 function getNavItems(role: string, t: (k: string) => string): NavItem[] {
   switch (role) {
     case "agency":
       return [
-        {
-          label: t("nav.marketplace"),
-          path: "/marketplace",
-          icon: ShoppingCart,
-        },
-        {
-          label: t("nav.dashboard"),
-          path: "/dashboard",
-          icon: LayoutDashboard,
-        },
+        { label: t("nav.marketplace"), path: "/marketplace", icon: ShoppingCart },
+        { label: t("nav.dashboard"), path: "/dashboard", icon: LayoutDashboard },
         { label: t("nav.invoices"), path: "/invoices", icon: Receipt },
       ];
     case "hotel":
@@ -89,24 +90,12 @@ function getNavItems(role: string, t: (k: string) => string): NavItem[] {
     case "super_admin":
       return [
         { label: t("nav.admin"), path: "/admin", icon: Shield },
-        {
-          label: t("nav.verifications"),
-          path: "/admin/verifications",
-          icon: CheckCircle,
-        },
-        {
-          label: "Payment Reviews",
-          path: "/admin/payment-verifications",
-          icon: Upload,
-        },
+        { label: t("nav.verifications"), path: "/admin/verifications", icon: CheckCircle },
+        { label: "Payment Reviews", path: "/admin/payment-verifications", icon: Upload },
         { label: t("nav.users"), path: "/admin/users", icon: Users },
         { label: t("nav.claims"), path: "/admin/claims", icon: FileText },
         { label: t("admin.invoices"), path: "/admin/invoices", icon: Receipt },
-        {
-          label: t("admin.auditLogs"),
-          path: "/admin/audit-logs",
-          icon: ScrollText,
-        },
+        { label: t("admin.auditLogs"), path: "/admin/audit-logs", icon: ScrollText },
       ];
     default:
       return [];
@@ -134,26 +123,29 @@ function NavLinks({
             to={item.path}
             onClick={onNavigate}
             className={cn(
-              "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-              active
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
+              "nav-item",
+              active ? "nav-item-active" : "nav-item-inactive"
             )}
           >
-            <item.icon
-              className={cn(
-                "h-4 w-4 shrink-0 transition-transform",
-                active ? "" : "group-hover:scale-110"
-              )}
-            />
+            <item.icon className="h-4 w-4 shrink-0" />
             <span className="truncate">{item.label}</span>
-            {active ? (
-              <span className="ms-auto h-1.5 w-1.5 rounded-full bg-primary-foreground/70" />
-            ) : null}
+            {active && (
+              <span className="ms-auto h-1.5 w-1.5 rounded-full bg-primary-foreground/60" />
+            )}
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+function UserAvatar({ name, role, size = "sm" }: { name: string; role: string; size?: "sm" | "md" }) {
+  const accent = roleAccent[role] ?? { avatar: "bg-muted text-muted-foreground" };
+  const dim = size === "md" ? "h-9 w-9 text-sm" : "h-7 w-7 text-xs";
+  return (
+    <div className={cn("flex shrink-0 items-center justify-center rounded-full font-bold", dim, accent.avatar)}>
+      {name.charAt(0).toUpperCase()}
+    </div>
   );
 }
 
@@ -164,40 +156,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { data: unreadCount } = trpc.notification.unreadCount.useQuery(
-    undefined,
-    {
-      enabled: !!user,
-      refetchInterval: 30000,
-    }
-  );
+  const { data: unreadCount } = trpc.notification.unreadCount.useQuery(undefined, {
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
 
   const role = (user as any)?.role || "";
   const userName = (user as any)?.name || (user as any)?.email || "User";
   const navItems = getNavItems(role, t);
   const roleBadge = role.replace("_", " ");
+  const accent = roleAccent[role] ?? { badge: "bg-muted text-muted-foreground border-transparent", avatar: "bg-muted text-muted-foreground" };
+
+  const SidebarUserSection = () => (
+    <div className="mb-4 rounded-lg border border-border/60 bg-muted/40 p-3">
+      <div className="flex items-center gap-2.5">
+        <UserAvatar name={userName} role={role} size="md" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-semibold text-foreground">{userName}</div>
+          <span className={cn("mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize", accent.badge)}>
+            {roleBadge}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="app-shell" dir={dir}>
-      <header className="sticky top-0 z-40 border-b border-border/80 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85">
+      {/* Header */}
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-card/95 backdrop-blur-md supports-[backdrop-filter]:bg-card/90">
         <div className="app-container flex h-16 items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+          {/* Left: mobile menu + logo */}
+          <div className="flex min-w-0 items-center gap-2">
             {user && navItems.length > 0 ? (
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="lg:hidden"
-                    aria-label="Open navigation"
-                  >
+                  <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent
-                  side={dir === "rtl" ? "right" : "left"}
-                  className="w-[19rem] p-0"
-                >
+                <SheetContent side={dir === "rtl" ? "right" : "left"} className="w-72 p-0">
                   <SheetHeader className="border-b px-5 py-4 text-left">
                     <SheetTitle>
                       <TravexLogotype iconClassName="h-8 w-8" />
@@ -205,24 +203,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <SheetDescription>{t("app.tagline")}</SheetDescription>
                   </SheetHeader>
                   <div className="p-4">
-                    <div className="mb-4 rounded-xl bg-muted/60 px-3 py-2.5">
-                      <div className="truncate text-sm font-semibold">
-                        {userName}
-                      </div>
-                      <span
-                        className={cn(
-                          "mt-1 inline-block rounded-md px-2 py-0.5 text-xs font-medium capitalize",
-                          roleColors[role] ?? "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {roleBadge}
-                      </span>
-                    </div>
-                    <NavLinks
-                      items={navItems}
-                      currentPath={location.pathname}
-                      onNavigate={() => setMobileOpen(false)}
-                    />
+                    <SidebarUserSection />
+                    <NavLinks items={navItems} currentPath={location.pathname} onNavigate={() => setMobileOpen(false)} />
+                    <Separator className="my-3" />
+                    <nav className="space-y-0.5">
+                      {[
+                        { label: t("nav.profile"), path: "/profile", icon: UserCircle },
+                        { label: t("nav.notifications"), path: "/notifications", icon: Bell },
+                        { label: t("nav.settings"), path: "/settings", icon: Settings },
+                      ].map(item => {
+                        const active = location.pathname === item.path;
+                        return (
+                          <Link
+                            key={item.path}
+                            to={item.path}
+                            onClick={() => setMobileOpen(false)}
+                            className={cn("nav-item", active ? "nav-item-active" : "nav-item-inactive")}
+                          >
+                            <item.icon className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{item.label}</span>
+                            {item.path === "/notifications" && unreadCount ? (
+                              <Badge className="ms-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px]">
+                                {unreadCount}
+                              </Badge>
+                            ) : null}
+                          </Link>
+                        );
+                      })}
+                    </nav>
                   </div>
                 </SheetContent>
               </Sheet>
@@ -230,61 +238,55 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             <Link
               to="/"
-              className="group flex min-w-0 items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group flex min-w-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={`${t("app.name")} — ${t("app.tagline")}`}
             >
               <TravexLogotype
                 showTagline
-                iconClassName="h-10 w-10 transition-transform duration-300 group-hover:rotate-3 group-hover:scale-105"
+                iconClassName="h-9 w-9 transition-transform duration-300 group-hover:scale-105"
                 className="[&>span:last-child]:hidden sm:[&>span:last-child]:block"
               />
             </Link>
           </div>
 
+          {/* Center: nav links for public */}
           {!user ? (
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 lg:flex">
               <Link
                 to="/marketplace"
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-accent hover:text-foreground"
               >
                 Explore Hotels
               </Link>
-              <span className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground/60 cursor-default select-none">
-                Transport &amp; Logistics
-                <span className="inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-default select-none">
+                Transport
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
                   Soon
                 </span>
               </span>
               <Link
                 to="/about"
-                className="rounded-md px-3 py-1.5 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+                className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-accent hover:text-foreground"
               >
                 About
               </Link>
             </nav>
           ) : null}
 
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          {/* Right: controls */}
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1.5">
+                <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
                   <Globe className="h-4 w-4" />
-                  <span className="hidden text-xs font-semibold uppercase sm:inline">
-                    {locale}
-                  </span>
-                  <ChevronDown className="h-3 w-3 opacity-60" />
+                  <span className="hidden text-xs font-semibold uppercase sm:inline">{locale}</span>
+                  <ChevronDown className="h-3 w-3 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLocale("fr")}>
-                  Francais
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale("en")}>
-                  English
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLocale("ar")}>
-                  Arabic
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocale("fr")}>Français</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocale("en")}>English</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setLocale("ar")}>العربية</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -293,40 +295,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative"
+                  className="relative text-muted-foreground hover:text-foreground"
                   onClick={() => navigate("/notifications")}
                   aria-label="Notifications"
                 >
                   <Bell className="h-5 w-5" />
                   {unreadCount ? (
-                    <Badge className="absolute -end-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px]">
+                    <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-white">
                       {unreadCount > 99 ? "99+" : unreadCount}
-                    </Badge>
+                    </span>
                   ) : null}
                 </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="max-w-[11rem] gap-2"
-                    >
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
-                        {userName.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="hidden truncate text-sm sm:inline">
-                        {userName}
-                      </span>
-                      <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+                    <Button variant="ghost" size="sm" className="max-w-[12rem] gap-2 rounded-lg">
+                      <UserAvatar name={userName} role={role} />
+                      <span className="hidden truncate text-sm sm:inline">{userName}</span>
+                      <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52">
-                    <div className="px-2 py-1.5">
-                      <p className="truncate text-sm font-medium">{userName}</p>
-                      <p className="truncate text-xs capitalize text-muted-foreground">
-                        {roleBadge}
-                      </p>
+                    <div className="px-2 py-2">
+                      <p className="truncate text-sm font-semibold">{userName}</p>
+                      <p className="truncate text-xs capitalize text-muted-foreground">{roleBadge}</p>
                     </div>
                     <Separator className="my-1" />
                     <DropdownMenuItem onClick={() => navigate("/profile")}>
@@ -338,10 +330,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       {t("nav.settings")}
                     </DropdownMenuItem>
                     <Separator className="my-1" />
-                    <DropdownMenuItem
-                      onClick={logout}
-                      className="text-destructive focus:text-destructive"
-                    >
+                    <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
                       <LogOut className="me-2 h-4 w-4" />
                       {t("auth.logout")}
                     </DropdownMenuItem>
@@ -350,11 +339,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/login")}
-                >
+                <Button variant="ghost" size="sm" onClick={() => navigate("/login")}>
                   {t("auth.login")}
                 </Button>
                 <Button size="sm" onClick={() => navigate("/register")}>
@@ -366,173 +351,126 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      {/* Body: sidebar + main */}
       <div className="app-container flex min-h-[calc(100vh-4rem)] gap-6 px-0 sm:px-6 lg:px-8">
         {user && navItems.length > 0 ? (
-          <aside className="sticky top-20 hidden h-[calc(100vh-5.5rem)] w-64 shrink-0 self-start overflow-y-auto rounded-xl border bg-card p-3 shadow-sm lg:block">
-            <div className="mb-4 rounded-xl bg-muted/50 px-3 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">
-                  {userName.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">
-                    {userName}
-                  </div>
-                  <span
-                    className={cn(
-                      "inline-block rounded-md px-1.5 py-0.5 text-xs font-medium capitalize",
-                      roleColors[role] ?? "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {roleBadge}
-                  </span>
-                </div>
+          <aside className="sticky top-[4.5rem] hidden h-[calc(100vh-5rem)] w-60 shrink-0 self-start overflow-y-auto lg:block">
+            <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card px-3 py-3 shadow-sm">
+              <SidebarUserSection />
+              <NavLinks items={navItems} currentPath={location.pathname} />
+              <div className="mt-auto">
+                <Separator className="my-3" />
+                <nav className="space-y-0.5">
+                  {[
+                    { label: t("nav.profile"), path: "/profile", icon: UserCircle },
+                    { label: t("nav.notifications"), path: "/notifications", icon: Bell },
+                    { label: t("nav.settings"), path: "/settings", icon: Settings },
+                  ].map(item => {
+                    const active = location.pathname === item.path;
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={cn("nav-item", active ? "nav-item-active" : "nav-item-inactive")}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                        {item.path === "/notifications" && unreadCount ? (
+                          <Badge className="ms-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px]">
+                            {unreadCount}
+                          </Badge>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </nav>
               </div>
             </div>
-            <NavLinks items={navItems} currentPath={location.pathname} />
-            <Separator className="my-3" />
-            <nav className="space-y-0.5">
-              {[
-                { label: t("nav.profile"), path: "/profile", icon: UserCircle },
-                {
-                  label: t("nav.notifications"),
-                  path: "/notifications",
-                  icon: Bell,
-                },
-                { label: t("nav.settings"), path: "/settings", icon: Settings },
-              ].map(item => {
-                const active = location.pathname === item.path;
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
-                      active
-                        ? "bg-primary/10 font-medium text-primary"
-                        : "text-muted-foreground hover:bg-accent/80 hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                    {item.path === "/notifications" && unreadCount ? (
-                      <Badge className="ms-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px]">
-                        {unreadCount}
-                      </Badge>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </nav>
           </aside>
         ) : null}
 
         <main
           key={location.pathname}
-          className="transition-page min-w-0 flex-1 px-4 py-6 sm:px-0 sm:py-8"
+          className="transition-page min-w-0 flex-1 px-4 py-8 sm:px-0"
         >
           {children}
         </main>
       </div>
 
-      <footer className="border-t border-slate-800 bg-slate-950 text-slate-400">
+      {/* Footer */}
+      <footer className="border-t border-slate-800/80 bg-[#0e1628] text-slate-400">
         <div className="app-container grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Col 1 – Brand */}
           <div className="flex flex-col gap-4">
             <TravexLogotype tone="light" iconClassName="h-10 w-10" />
-            <p className="text-sm leading-6 text-slate-400">
-              © 2026 Travex B2B Marketplace. Global Travel Logistics Simplified.
+            <p className="text-sm leading-relaxed text-slate-400/80">
+              B2B hotel marketplace built for Algeria's travel industry.
             </p>
+            <p className="text-xs text-slate-600">© 2026 Travex. All rights reserved.</p>
           </div>
 
-          {/* Col 2 – Solutions */}
           <div>
-            <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-300">
+            <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
               Solutions
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <Link
-                  to="/marketplace"
-                  className="transition-colors hover:text-white"
-                >
+                <Link to="/marketplace" className="transition-colors hover:text-white">
                   Explore Hotels
                 </Link>
               </li>
               <li>
                 <span className="flex items-center gap-1.5 text-slate-500 cursor-default">
                   Transport &amp; Logistics
-                  <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
                     Soon
                   </span>
                 </span>
               </li>
               <li>
-                <Link
-                  to="/marketplace"
-                  className="transition-colors hover:text-white"
-                >
+                <Link to="/marketplace" className="transition-colors hover:text-white">
                   Partner Support
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3 – Legal */}
           <div>
-            <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-300">
+            <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
               Legal
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <Link to="/" className="transition-colors hover:text-white">
-                  Privacy Policy
-                </Link>
+                <Link to="/" className="transition-colors hover:text-white">Privacy Policy</Link>
               </li>
               <li>
-                <Link to="/" className="transition-colors hover:text-white">
-                  Terms of Service
-                </Link>
+                <Link to="/" className="transition-colors hover:text-white">Terms of Service</Link>
               </li>
               <li>
-                <Link to="/" className="transition-colors hover:text-white">
-                  API Documentation
-                </Link>
+                <Link to="/" className="transition-colors hover:text-white">API Documentation</Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 4 – Connect */}
           <div>
-            <h4 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-300">
+            <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
               Connect
             </h4>
-            <div className="mb-4 flex items-center gap-3">
-              <a
-                href="#"
-                aria-label="Share"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400 transition-colors hover:bg-primary/20 hover:text-primary"
-              >
-                <Send className="h-3.5 w-3.5" />
-              </a>
-              <a
-                href="#"
-                aria-label="YouTube"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400 transition-colors hover:bg-primary/20 hover:text-primary"
-              >
-                <Youtube className="h-3.5 w-3.5" />
-              </a>
-              <a
-                href="#"
-                aria-label="LinkedIn"
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400 transition-colors hover:bg-primary/20 hover:text-primary"
-              >
-                <Linkedin className="h-3.5 w-3.5" />
-              </a>
+            <div className="mb-5 flex items-center gap-2.5">
+              {[
+                { icon: Send, label: "Share" },
+                { icon: Youtube, label: "YouTube" },
+                { icon: Linkedin, label: "LinkedIn" },
+              ].map(({ icon: Icon, label }) => (
+                <a
+                  key={label}
+                  href="#"
+                  aria-label={label}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-400 transition-colors hover:bg-primary/20 hover:text-primary"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </a>
+              ))}
             </div>
-            <p className="mb-4 text-xs leading-5 text-slate-500">
-              Join our newsletter for exclusive B2B inventory updates.
-            </p>
             <div className="space-y-2 text-sm">
               <a
                 href="mailto:contact@nexelite.co"
@@ -552,10 +490,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="border-t border-slate-800">
-          <div className="app-container flex flex-col items-center justify-between gap-2 py-4 text-xs text-slate-600 sm:flex-row">
+        <div className="border-t border-slate-800/60">
+          <div className="app-container flex flex-col items-center justify-between gap-2 py-4 text-xs text-slate-700 sm:flex-row">
             <span>© 2026 Travex. All rights reserved.</span>
-            <span>Made in Algeria</span>
+            <span>Made in Algeria 🇩🇿</span>
           </div>
         </div>
       </footer>

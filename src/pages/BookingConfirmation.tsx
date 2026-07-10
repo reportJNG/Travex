@@ -15,12 +15,6 @@ import { StatusBadge } from "@/components/app/StatusBadge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -98,17 +92,15 @@ export default function BookingConfirmation() {
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-6">
           {/* Voucher card */}
-          <Card className={isConfirmed ? "border-emerald-200 bg-emerald-50/30" : ""}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="flex items-center gap-2">
-                  <BadgeCheck className="h-5 w-5 text-primary" />
-                  Booking voucher
-                </CardTitle>
-                <StatusBadge status={status}>{status.replace(/_/g, " ")}</StatusBadge>
+          <div className={`overflow-hidden rounded-xl border bg-card ${isConfirmed ? "border-emerald-200 bg-emerald-50/30" : "border-border"}`}>
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border/60">
+              <div className="flex items-center gap-2 font-semibold text-foreground">
+                <BadgeCheck className="h-5 w-5 text-primary" />
+                Bon de réservation
               </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
+              <StatusBadge status={status}>{status.replace(/_/g, " ")}</StatusBadge>
+            </div>
+            <div className="space-y-5 p-5">
               <div className="rounded-xl border bg-white p-5 shadow-sm">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -204,15 +196,15 @@ export default function BookingConfirmation() {
                   </Badge>
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Next steps */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Next steps</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="border-b border-border/60 px-5 py-4">
+              <h3 className="font-semibold text-foreground">Prochaines étapes</h3>
+            </div>
+            <div className="space-y-3 p-5 text-sm text-muted-foreground">
               {isConfirmed ? (
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2">
@@ -244,14 +236,14 @@ export default function BookingConfirmation() {
                   contact@nexelite.co
                 </a>
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Sidebar */}
         <aside className="space-y-4">
-          <Card>
-            <CardContent className="pt-6 space-y-3 text-sm">
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="space-y-3 p-5 text-sm">
               <div className="flex justify-between gap-3">
                 <span className="text-muted-foreground">Reference</span>
                 <span className="font-mono font-medium">{reference}</span>
@@ -264,8 +256,8 @@ export default function BookingConfirmation() {
                 <span className="text-muted-foreground">Hotel</span>
                 <span className="text-right">{hotel.name}</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-2">
             <Button asChild>

@@ -23,7 +23,6 @@ import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatCard } from "@/components/app/StatCard";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -333,8 +332,8 @@ export default function Inventory() {
           title="Create your hotel profile"
           description="Add the core information agencies need before you start publishing B2B inventory."
         />
-        <Card>
-          <CardContent className="space-y-4 p-5">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="p-5 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Hotel name *</Label>
@@ -431,8 +430,8 @@ export default function Inventory() {
             >
               {createHotel.isPending ? "Creating..." : "Create hotel profile"}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -509,13 +508,13 @@ export default function Inventory() {
         />
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>
+      <div className="overflow-hidden rounded-xl border border-border bg-card mb-6">
+        <div className="border-b border-border/60 px-5 py-4">
+          <h3 className="font-semibold text-foreground">
             {editMode ? "Edit hotel profile" : "Hotel profile"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </h3>
+        </div>
+        <div className="p-5">
           {editMode ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -636,18 +635,18 @@ export default function Inventory() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Payment Settings */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+      <div className="overflow-hidden rounded-xl border border-border bg-card mb-6">
+        <div className="border-b border-border/60 px-5 py-4">
+          <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
             <CreditCard className="h-5 w-5" />
             Payment Settings
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+          </h3>
+        </div>
+        <div className="p-5 space-y-5">
           <div className="space-y-3">
             <Label className="text-sm font-medium">
               Accepted payment methods
@@ -721,18 +720,18 @@ export default function Inventory() {
             <Save className="me-2 h-4 w-4" />
             {savingPayment ? "Saving..." : "Save Payment Settings"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Hotel Photos */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
+      <div className="overflow-hidden rounded-xl border border-border bg-card mb-6">
+        <div className="border-b border-border/60 px-5 py-4">
+          <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
             <Image className="h-5 w-5" />
             Hotel Photos
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </h3>
+        </div>
+        <div className="p-5 space-y-4">
           {/* Existing photos grid */}
           {photos.length > 0 && (
             <div>
@@ -840,8 +839,8 @@ export default function Inventory() {
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Room Management */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -864,8 +863,8 @@ export default function Inventory() {
       </div>
 
       {showAddRoom ? (
-        <Card className="mb-4 border-primary/20 bg-primary/5">
-          <CardContent className="p-4">
+        <div className="overflow-hidden rounded-xl border border-primary/20 bg-primary/5 mb-4">
+          <div className="p-4">
             <div className="grid gap-3 sm:grid-cols-5 sm:items-start">
               <div className="space-y-1.5">
                 <Label className="text-xs">Room Type</Label>
@@ -948,8 +947,8 @@ export default function Inventory() {
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       {rooms.length ? (
@@ -957,11 +956,11 @@ export default function Inventory() {
           {rooms.map(room => {
             const isActive = Boolean(room.isActive);
             return (
-              <Card
+              <div
                 key={room.id as string}
-                className={`transition-all ${!isActive ? "opacity-60" : "hover:shadow-md"}`}
+                className={`overflow-hidden rounded-xl border border-border bg-card transition-all ${!isActive ? "opacity-60" : "hover:shadow-md"}`}
               >
-                <CardContent className="p-4">
+                <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="truncate font-semibold">
@@ -1048,8 +1047,8 @@ export default function Inventory() {
                       )}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -1068,19 +1067,19 @@ export default function Inventory() {
       )}
 
       {/* Commission Ledger */}
-      <Card className="mt-8">
-        <CardHeader>
+      <div className="overflow-hidden rounded-xl border border-border bg-card mt-8">
+        <div className="border-b border-border/60 px-5 py-4">
           <div>
-            <CardTitle className="flex items-center gap-2 text-base">
+            <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
               <Wallet className="h-5 w-5" />
               Platform Commission Ledger
-            </CardTitle>
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Real-time tracking of 5% platform commissions
             </p>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+        <div className="p-5 space-y-4">
           {invoiceList.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border py-8 text-center">
               <Wallet className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
@@ -1163,8 +1162,8 @@ export default function Inventory() {
               </p>
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

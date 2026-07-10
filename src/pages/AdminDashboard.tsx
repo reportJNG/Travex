@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import {
   BarChart3,
   Building2,
+  CheckCircle,
   DollarSign,
   Eye,
   Receipt,
@@ -14,7 +15,6 @@ import { PageHeader } from "@/components/app/PageHeader";
 import { StatCard } from "@/components/app/StatCard";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -27,314 +27,225 @@ import {
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
+const quickActions = [
+  {
+    title: "Vérifications",
+    description: "Approuver ou rejeter les nouveaux comptes en attente de révision.",
+    href: "/admin/verifications",
+    icon: Shield,
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    title: "Gestion des utilisateurs",
+    description: "Rechercher des comptes, inspecter les rôles et suspendre les accès à risque.",
+    href: "/admin/users",
+    icon: Users,
+    color: "bg-sky-100 text-sky-600",
+  },
+  {
+    title: "Réclamations hôtels",
+    description: "Résoudre les demandes de propriété des hôtels seeded avec des actions d'audit claires.",
+    href: "/admin/claims",
+    icon: Building2,
+    color: "bg-violet-100 text-violet-600",
+  },
+  {
+    title: "Factures hôtels",
+    description: "Générer les commissions mensuelles, marquer les paiements reçus et suivre la facturation.",
+    href: "/admin/invoices",
+    icon: Receipt,
+    color: "bg-amber-100 text-amber-600",
+  },
+  {
+    title: "Révisions de paiements",
+    description: "Vérifier les reçus de paiement offline soumis par les agences.",
+    href: "/admin/payment-verifications",
+    icon: Eye,
+    color: "bg-emerald-100 text-emerald-600",
+  },
+];
+
 export default function AdminDashboard() {
   const { t } = useI18n();
   const { data: stats, refetch, isFetching } = trpc.admin.stats.useQuery();
-  const { data: pendingUsers } = trpc.admin.listUsers.useQuery({
-    status: "awaiting_review",
-  });
+  const { data: pendingUsers } = trpc.admin.listUsers.useQuery({ status: "awaiting_review" });
   const { data: invoices } = trpc.admin.listInvoices.useQuery();
 
   const commission = stats ? stats.transactionsVolume * 0.05 : 0;
-
-  // Show up to 5 most recent invoices in the summary table
   const recentInvoices = invoices?.slice(0, 5) ?? [];
 
   return (
     <div>
       <PageHeader
-        eyebrow="Command center"
+        eyebrow="Centre de commande"
         title={t("admin.title")}
-        description="Monitor platform health, verification queues, users, and claim activity from one place."
+        description="Surveillez la santé de la plateforme, les files d'attente de vérification, les utilisateurs et l'activité des réclamations."
         actions={
-          <Button
-            variant="outline"
-            onClick={() => refetch()}
-            disabled={isFetching}
-          >
-            <RefreshCw
-              className={`me-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
-            />
-            Refresh
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`me-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            Actualiser
           </Button>
         }
       />
 
-      {/* KPI Stats */}
+      {/* Pending review alert */}
+      {pendingUsers && pendingUsers.length > 0 && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-800">
+          <CheckCircle className="h-5 w-5 shrink-0 text-amber-600" />
+          <span>
+            <span className="font-semibold">{pendingUsers.length}</span> compte{pendingUsers.length !== 1 ? "s" : ""} en attente de révision.
+          </span>
+          <Button
+            size="sm"
+            asChild
+            variant="outline"
+            className="ms-auto border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-800"
+          >
+            <Link to="/admin/verifications">Réviser maintenant</Link>
+          </Button>
+        </div>
+      )}
+
+      {/* KPI Grid */}
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {!stats ? (
-          <>
-            {[1, 2, 3, 4].map(i => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
-            ))}
-          </>
+          Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))
         ) : (
           <>
-            <StatCard
-              label={t("admin.agencies")}
-              value={stats.agencies}
-              icon={<Users className="h-5 w-5" />}
-            />
-            <StatCard
-              label={t("admin.hotels")}
-              value={stats.hotels}
-              icon={<Building2 className="h-5 w-5" />}
-              tone="green"
-            />
-            <StatCard
-              label={t("admin.transactions")}
-              value={stats.transactionsCount}
-              icon={<Receipt className="h-5 w-5" />}
-            />
+            <StatCard label={t("admin.agencies")} value={stats.agencies} icon={<Users className="h-5 w-5" />} />
+            <StatCard label={t("admin.hotels")} value={stats.hotels} icon={<Building2 className="h-5 w-5" />} tone="green" />
+            <StatCard label={t("admin.transactions")} value={stats.transactionsCount} icon={<BarChart3 className="h-5 w-5" />} tone="blue" />
             <StatCard
               label={t("admin.volume")}
               value={`${(stats.transactionsVolume / 1000).toFixed(0)}K DZD`}
-              icon={<BarChart3 className="h-5 w-5" />}
+              icon={<TrendingUp className="h-5 w-5" />}
               tone="amber"
             />
           </>
         )}
       </div>
 
-      {/* Commission Revenue Tracker */}
-      <div className="mb-6">
-        <h2 className="mb-3 text-base font-semibold">
-          Commission Revenue Tracker
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {!stats ? (
-            <>
-              {[1, 2, 3, 4].map(i => (
-                <Skeleton key={i} className="h-24 rounded-xl" />
-              ))}
-            </>
-          ) : (
-            <>
-              <StatCard
-                label="Active Agencies"
-                value={stats.agencies}
-                icon={<Users className="h-5 w-5" />}
-              />
-              <StatCard
-                label="Active Hotels"
-                value={stats.hotels}
-                icon={<Building2 className="h-5 w-5" />}
-                tone="green"
-              />
-              <StatCard
-                label="Total GTV (DZD)"
-                value={stats.transactionsVolume.toLocaleString("fr-DZ")}
-                icon={<TrendingUp className="h-5 w-5" />}
-                tone="amber"
-              />
-              <StatCard
-                label="Platform Commission (5%)"
-                value={`${commission.toLocaleString("fr-DZ", { maximumFractionDigits: 0 })} DZD`}
-                icon={<DollarSign className="h-5 w-5" />}
-                tone="green"
-              />
-            </>
-          )}
-        </div>
+      {/* Commission & Revenue */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        {!stats ? (
+          Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))
+        ) : (
+          <>
+            <StatCard
+              label="Volume total (GTV)"
+              value={`${stats.transactionsVolume.toLocaleString("fr-DZ")} DZD`}
+              icon={<TrendingUp className="h-5 w-5" />}
+              tone="blue"
+            />
+            <StatCard
+              label="Commission plateforme (5%)"
+              value={`${commission.toLocaleString("fr-DZ", { maximumFractionDigits: 0 })} DZD`}
+              icon={<DollarSign className="h-5 w-5" />}
+              tone="green"
+            />
+          </>
+        )}
       </div>
 
-      {/* Monthly Invoice Status */}
-      <div className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">Monthly Invoice Status</h2>
-          <Button size="sm" variant="outline" asChild>
-            <Link to="/admin/invoices">View all invoices</Link>
-          </Button>
-        </div>
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hotel</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead className="text-right">Amount (DZD)</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentInvoices.length > 0 ? (
-                  recentInvoices.map((invoice: any) => (
-                    <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
-                        {invoice.hotel?.name ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {invoice.period ?? invoice.issuedAt?.slice(0, 7) ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {Number(
-                          invoice.amount ?? invoice.totalAmount ?? 0
-                        ).toLocaleString("fr-DZ")}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={invoice.status}>
-                          {invoice.status}
-                        </StatusBadge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <>
-                    {/* Placeholder rows when no invoice data is available yet */}
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        Hotel Sofitel Algiers
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        2026-06
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        24,500
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status="paid">Paid</StatusBadge>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Hilton Oran</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        2026-06
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        18,200
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status="awaiting_review">
-                          Grace Period
-                        </StatusBadge>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        Riadh Palms Constantine
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        2026-06
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        9,750
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status="rejected">Overdue</StatusBadge>
-                      </TableCell>
-                    </TableRow>
-                  </>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Visibility Control Notice */}
-      <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-        <Eye className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+      {/* Visibility notice */}
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3.5 text-sm text-sky-800">
+        <Eye className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
         <div>
-          <span className="font-semibold">Visibility Control: </span>
-          Hotels with unpaid invoices (&gt;30 days) are automatically hidden.
-          Monitor via{" "}
-          <Link to="/admin/invoices" className="underline hover:no-underline">
-            Invoice Management
+          <span className="font-semibold">Contrôle de visibilité : </span>
+          Les hôtels avec des factures impayées (&gt;30 jours) sont automatiquement masqués.
+          Suivez via{" "}
+          <Link to="/admin/invoices" className="font-medium underline hover:no-underline">
+            Gestion des factures
           </Link>
           .
         </div>
       </div>
 
-      {pendingUsers && pendingUsers.length > 0 ? (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Shield className="h-5 w-5 shrink-0 text-amber-600" />
-          <span>
-            <span className="font-semibold">{pendingUsers.length}</span> account
-            {pendingUsers.length !== 1 ? "s" : ""} awaiting verification review.
-          </span>
-          <Button
-            size="sm"
-            asChild
-            variant="outline"
-            className="ms-auto border-amber-300 bg-amber-100 hover:bg-amber-200"
-          >
-            <Link to="/admin/verifications">Review now</Link>
+      {/* Recent invoices */}
+      <div className="mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Statut des factures mensuelles</h2>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/admin/invoices">Voir toutes les factures</Link>
           </Button>
         </div>
-      ) : null}
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div>
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 hover:bg-muted/40">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hôtel</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Période</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Montant (DZD)</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Statut</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentInvoices.length > 0 ? (
+                    recentInvoices.map((invoice: any) => (
+                      <TableRow key={invoice.id} className="hover:bg-muted/30 transition-colors">
+                        <TableCell className="font-medium py-3">{invoice.hotel?.name ?? "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground py-3">
+                          {invoice.period ?? invoice.issuedAt?.slice(0, 7) ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm py-3">
+                          {Number(invoice.amount ?? invoice.totalAmount ?? 0).toLocaleString("fr-DZ")}
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <StatusBadge status={invoice.status}>{invoice.status}</StatusBadge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <>
+                      {[
+                        { name: "Hotel Sofitel Algiers", period: "2026-06", amount: "24 500", status: "paid", label: "Payé" },
+                        { name: "Hilton Oran", period: "2026-06", amount: "18 200", status: "awaiting_review", label: "En grâce" },
+                        { name: "Riadh Palms Constantine", period: "2026-06", amount: "9 750", status: "rejected", label: "En retard" },
+                      ].map(row => (
+                        <TableRow key={row.name} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="font-medium py-3">{row.name}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground py-3">{row.period}</TableCell>
+                          <TableCell className="text-right font-mono text-sm py-3">{row.amount}</TableCell>
+                          <TableCell className="py-3">
+                            <StatusBadge status={row.status}>{row.label}</StatusBadge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {[
-          {
-            title: "Review verifications",
-            description:
-              "Approve or reject new hotel and agency accounts awaiting review.",
-            href: "/admin/verifications",
-            icon: Shield,
-            badge: pendingUsers?.length,
-          },
-          {
-            title: "Manage users",
-            description:
-              "Search accounts, inspect roles, and suspend risky access.",
-            href: "/admin/users",
-            icon: Users,
-            badge: undefined,
-          },
-          {
-            title: "Review claims",
-            description:
-              "Resolve seeded hotel ownership requests with clear audit actions.",
-            href: "/admin/claims",
-            icon: Building2,
-            badge: undefined,
-          },
-          {
-            title: "Hotel invoices",
-            description:
-              "Generate monthly commissions, mark payments received, and track billing.",
-            href: "/admin/invoices",
-            icon: Receipt,
-            badge: undefined,
-          },
-          {
-            title: "Payment reviews",
-            description:
-              "Verify offline payment receipts submitted by agencies.",
-            href: "/admin/payment-verifications",
-            icon: Eye,
-            badge: undefined,
-          },
-        ].map(action => (
-          <Card key={action.href} className="transition-shadow hover:shadow-md">
-            <CardContent className="flex h-full flex-col gap-4 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <action.icon className="h-5 w-5" />
-                </div>
-                {action.badge ? (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                    {action.badge}
-                  </span>
-                ) : null}
+      {/* Quick actions */}
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Actions rapides</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {quickActions.map(action => (
+            <Link
+              key={action.href}
+              to={action.href}
+              className="group flex flex-col gap-3 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-primary/20 hover:shadow-md"
+            >
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${action.color}`}>
+                <action.icon className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <h2 className="font-semibold">{action.title}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {action.description}
-                </p>
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                  {action.title}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{action.description}</p>
               </div>
-              <Button
-                asChild
-                variant="outline"
-                className="justify-start hover:bg-primary/5"
-              >
-                <Link to={action.href}>Open</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

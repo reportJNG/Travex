@@ -2,7 +2,6 @@ import { BarChart3, BedDouble, Calendar, TrendingUp } from "lucide-react";
 import { EmptyState } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { StatCard } from "@/components/app/StatCard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
@@ -78,7 +77,7 @@ export default function Analytics() {
       <PageHeader
         eyebrow="Performance"
         title={t("nav.analytics")}
-        description="A clean overview of booking volume, room nights, revenue, and confirmation signals."
+        description="Volume de réservations, nuits vendues, revenus et taux de confirmation pour votre hôtel."
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -88,80 +87,70 @@ export default function Analytics() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">This month vs last month</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data ? (
-              <div className="space-y-4">
-                {[
-                  { label: "Bookings", current: data.thisMonthBookings, last: data.lastMonthBookings },
-                  { label: "Room nights", current: data.thisMonthNights, last: data.lastMonthNights },
-                  { label: "Revenue (DZD)", current: data.thisMonthRevenue, last: data.lastMonthRevenue },
-                ].map((row) => {
-                  const max = Math.max(row.current, row.last, 1);
-                  return (
-                    <div key={row.label} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">{row.label}</span>
-                        <span className="font-medium">{row.current.toLocaleString()}</span>
-                      </div>
-                      <div className="flex gap-1">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${(row.current / max) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>This month</span>
-                        <span>Last: {row.last.toLocaleString()}</span>
-                      </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Ce mois vs le mois précédent</h3>
+          {data ? (
+            <div className="space-y-5">
+              {[
+                { label: "Réservations", current: data.thisMonthBookings, last: data.lastMonthBookings },
+                { label: "Nuits vendues", current: data.thisMonthNights, last: data.lastMonthNights },
+                { label: "Revenus (DZD)", current: data.thisMonthRevenue, last: data.lastMonthRevenue },
+              ].map((row) => {
+                const max = Math.max(row.current, row.last, 1);
+                return (
+                  <div key={row.label} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">{row.label}</span>
+                      <span className="font-semibold text-foreground">{row.current.toLocaleString("fr-DZ")}</span>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState
-                icon={<BarChart3 className="h-6 w-6" />}
-                title="No data yet"
-                description="Stats will populate as bookings are confirmed."
-              />
-            )}
-          </CardContent>
-        </Card>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-500"
+                        style={{ width: `${(row.current / max) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Ce mois</span>
+                      <span>Précédent : {row.last.toLocaleString("fr-DZ")}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={<BarChart3 className="h-6 w-6" />}
+              title="Aucune donnée"
+              description="Les statistiques s'afficheront à mesure que les réservations sont confirmées."
+            />
+          )}
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Booking overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data && data.totalBookings > 0 ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between rounded-xl bg-muted/50 p-4">
-                  <span className="text-sm text-muted-foreground">Total bookings ever</span>
-                  <span className="text-2xl font-bold text-foreground">{data.totalBookings}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-emerald-50 p-4">
-                  <span className="text-sm text-emerald-700">Confirmed / completed</span>
-                  <span className="text-2xl font-bold text-emerald-700">{data.confirmedTotal}</span>
-                </div>
-                <div className="flex items-center justify-between rounded-xl bg-primary/5 p-4">
-                  <span className="text-sm text-primary">Confirmation rate</span>
-                  <span className="text-2xl font-bold text-primary">{occupancyRate}%</span>
-                </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Vue d'ensemble des réservations</h3>
+          {data && data.totalBookings > 0 ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3.5">
+                <span className="text-sm text-muted-foreground">Total réservations</span>
+                <span className="text-2xl font-bold text-foreground">{data.totalBookings}</span>
               </div>
-            ) : (
-              <EmptyState
-                icon={<BarChart3 className="h-6 w-6" />}
-                title="No bookings yet"
-                description="Accept your first booking to see overview stats."
-              />
-            )}
-          </CardContent>
-        </Card>
+              <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3.5">
+                <span className="text-sm text-emerald-700">Confirmées / complétées</span>
+                <span className="text-2xl font-bold text-emerald-700">{data.confirmedTotal}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl bg-primary/5 px-4 py-3.5">
+                <span className="text-sm text-primary">Taux de confirmation</span>
+                <span className="text-2xl font-bold text-primary">{occupancyRate}%</span>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              icon={<BarChart3 className="h-6 w-6" />}
+              title="Aucune réservation"
+              description="Acceptez votre première réservation pour voir les statistiques."
+            />
+          )}
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,6 @@ import { AlertCircle, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type EmptyStateProps = {
@@ -14,28 +13,23 @@ type EmptyStateProps = {
   className?: string;
 };
 
-export function EmptyState({
-  icon,
-  title,
-  description,
-  action,
-  className,
-}: EmptyStateProps) {
+export function EmptyState({ icon, title, description, action, className }: EmptyStateProps) {
   return (
-    <Card className={cn("border-dashed", className)}>
-      <CardContent className="flex flex-col items-center justify-center px-6 py-14 text-center">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          {icon ?? <Inbox className="h-6 w-6" />}
-        </div>
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-        {description ? (
-          <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
-        {action ? <div className="mt-5">{action}</div> : null}
-      </CardContent>
-    </Card>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16 px-6 text-center",
+        className,
+      )}
+    >
+      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        {icon ?? <Inbox className="h-6 w-6" />}
+      </div>
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {description ? (
+        <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">{description}</p>
+      ) : null}
+      {action ? <div className="mt-5">{action}</div> : null}
+    </div>
   );
 }
 
@@ -45,11 +39,7 @@ type ErrorStateProps = {
   onRetry?: () => void;
 };
 
-export function ErrorState({
-  title = "Something went wrong",
-  description,
-  onRetry,
-}: ErrorStateProps) {
+export function ErrorState({ title = "Something went wrong", description, onRetry }: ErrorStateProps) {
   return (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
@@ -70,14 +60,12 @@ export function LoadingCards({ count = 6 }: { count?: number }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: count }).map((_, index) => (
-        <Card key={index}>
-          <CardContent className="space-y-4 p-4">
-            <Skeleton className="h-40 w-full rounded-lg" />
-            <Skeleton className="h-5 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-9 w-full" />
-          </CardContent>
-        </Card>
+        <div key={index} className="rounded-xl border border-border bg-card p-4 space-y-4">
+          <Skeleton className="h-40 w-full rounded-lg" />
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="h-9 w-full" />
+        </div>
       ))}
     </div>
   );

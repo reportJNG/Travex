@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import { EmptyState, LoadingCards } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
@@ -73,13 +72,13 @@ const DEFAULT_STYLE: NotifStyle = {
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return "à l'instant";
+  if (mins < 60) return `${mins}m`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString();
+  if (days < 7) return `${days}j`;
+  return new Date(dateStr).toLocaleDateString("fr-DZ");
 }
 
 function getNotificationDetail(
@@ -87,7 +86,7 @@ function getNotificationDetail(
   data: Record<string, unknown>
 ): string | null {
   const ref =
-    typeof data.reference === "string" ? `Ref: ${data.reference}` : null;
+    typeof data.reference === "string" ? `Réf: ${data.reference}` : null;
   const hotel = typeof data.hotelName === "string" ? data.hotelName : null;
   const period = typeof data.period === "string" ? data.period : null;
 
@@ -119,7 +118,7 @@ export default function Notifications() {
   });
   const markAllRead = trpc.notification.markAllRead.useMutation({
     onSuccess: () => {
-      toast.success("All marked as read");
+      toast.success("Toutes marquées comme lues");
       utils.notification.list.invalidate();
       utils.notification.unreadCount.invalidate();
     },
@@ -130,13 +129,14 @@ export default function Notifications() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow="Inbox"
+        eyebrow="Boîte de réception"
         title={t("notifications.title")}
-        description="Booking, payment, account, invoice, and claim updates."
+        description="Réservations, paiements, comptes, factures et réclamations."
         actions={
           unreadCount > 0 ? (
             <Button
               variant="outline"
+              size="sm"
               onClick={() => markAllRead.mutate()}
               disabled={markAllRead.isPending}
             >
@@ -147,98 +147,94 @@ export default function Notifications() {
         }
       />
 
-      {unreadCount > 0 ? (
-        <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm text-primary">
-          {unreadCount} unread notification{unreadCount > 1 ? "s" : ""}
+      {unreadCount > 0 && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-primary/25 bg-primary/5 px-4 py-2.5 text-sm text-primary">
+          <span className="h-2 w-2 rounded-full bg-primary" />
+          <span>
+            <span className="font-semibold">{unreadCount}</span> notification{unreadCount > 1 ? "s" : ""} non lue{unreadCount > 1 ? "s" : ""}
+          </span>
         </div>
-      ) : null}
+      )}
 
-      <Card>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-4">
-              <LoadingCards count={4} />
-            </div>
-          ) : notifications && notifications.length > 0 ? (
-            <div className="divide-y">
-              {notifications.map(notification => {
-                let payload: Record<string, unknown> = {};
-                try {
-                  payload =
-                    typeof notification.data === "string"
-                      ? JSON.parse(notification.data)
-                      : (notification.data as Record<string, unknown>) || {};
-                } catch {
-                  payload = {};
-                }
-                const isUnread = !notification.readAt;
-                const detail = getNotificationDetail(
-                  notification.type,
-                  payload
-                );
-                const style =
-                  NOTIFICATION_STYLE[notification.type] ?? DEFAULT_STYLE;
-                const Icon = style.icon;
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        {isLoading ? (
+          <div className="p-5">
+            <LoadingCards count={4} />
+          </div>
+        ) : notifications && notifications.length > 0 ? (
+          <div className="divide-y divide-border">
+            {notifications.map(notification => {
+              let payload: Record<string, unknown> = {};
+              try {
+                payload =
+                  typeof notification.data === "string"
+                    ? JSON.parse(notification.data)
+                    : (notification.data as Record<string, unknown>) || {};
+              } catch {
+                payload = {};
+              }
+              const isUnread = !notification.readAt;
+              const detail = getNotificationDetail(
+                notification.type,
+                payload
+              );
+              const style =
+                NOTIFICATION_STYLE[notification.type] ?? DEFAULT_STYLE;
+              const Icon = style.icon;
 
-                return (
-                  <button
-                    key={notification.id}
-                    type="button"
-                    className={`group flex w-full items-start gap-4 px-4 py-4 text-start transition-colors hover:bg-muted/50 ${
-                      isUnread ? "bg-primary/5" : ""
-                    }`}
-                    onClick={() => {
-                      if (isUnread)
-                        markRead.mutate({ notificationId: notification.id });
-                    }}
+              return (
+                <button
+                  key={notification.id}
+                  type="button"
+                  className={`group flex w-full items-start gap-4 px-5 py-4 text-start transition-colors hover:bg-muted/40 ${
+                    isUnread ? "bg-primary/[0.03]" : ""
+                  }`}
+                  onClick={() => {
+                    if (isUnread)
+                      markRead.mutate({ notificationId: notification.id });
+                  }}
+                >
+                  <span
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${style.bg} ${style.text}`}
                   >
-                    <span
-                      className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${style.bg} ${style.text} transition-transform group-hover:scale-105`}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-medium text-foreground">
-                          {t(`notifications.${notification.type}`) ||
-                            notification.type}
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          {timeAgo(notification.createdAt)}
-                        </span>
+                    <Icon className="h-4.5 w-4.5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className={`truncate text-sm ${isUnread ? "font-semibold text-foreground" : "font-medium text-foreground/80"}`}>
+                        {t(`notifications.${notification.type}`) ||
+                          notification.type}
                       </span>
-                      {detail ? (
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {detail}
-                        </span>
-                      ) : null}
-                      {isUnread ? (
-                        <span className="mt-1 block text-xs font-medium text-primary">
-                          Tap to mark as read
-                        </span>
-                      ) : null}
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {timeAgo(notification.createdAt)}
+                      </span>
                     </span>
-                    {isUnread ? (
-                      <span
-                        className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-primary"
-                        aria-label="Unread"
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="p-6">
-              <EmptyState
-                icon={<BellOff className="h-6 w-6" />}
-                title={t("notifications.empty")}
-                description="You are all caught up. New notifications will appear here."
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    {detail && (
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {detail}
+                      </span>
+                    )}
+                  </span>
+                  {isUnread && (
+                    <span
+                      className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary"
+                      aria-label="Non lue"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8">
+            <EmptyState
+              icon={<BellOff className="h-6 w-6" />}
+              title={t("notifications.empty")}
+              description="Vous êtes à jour. Les nouvelles notifications apparaîtront ici."
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

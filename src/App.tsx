@@ -3,7 +3,6 @@ import { lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Clock, ShieldAlert, XCircle } from "lucide-react";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -302,45 +301,45 @@ function PendingPage() {
   const legalName = (user as any)?.profile?.legalName || (user as any)?.name || "";
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-lg">
-        <CardContent className="px-6 py-10 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+    <div className="flex min-h-[60vh] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
             <Clock className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Account under review</h1>
-          {legalName ? (
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Compte en cours de révision</h1>
+          {legalName && (
             <p className="mt-1 text-sm font-medium text-muted-foreground">{legalName}</p>
-          ) : null}
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            Your business registration is being manually reviewed by the Travex
-            team. This typically takes 1–2 business days. You will receive a
-            notification at <strong>{email}</strong> once a decision is made.
+          )}
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Votre inscription professionnelle est en cours de révision manuelle par l'équipe Travex.
+            Cela prend généralement 1–2 jours ouvrables. Vous recevrez une notification à{" "}
+            <strong className="text-foreground">{email}</strong> une fois la décision prise.
           </p>
-          <div className="mt-6 space-y-2 rounded-xl border bg-muted/40 px-4 py-4 text-left text-sm">
-            <p className="flex items-center gap-2 text-muted-foreground">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800">1</span>
-              Business profile submitted
-            </p>
-            <p className="flex items-center gap-2 text-muted-foreground">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-600">2</span>
-              Document review in progress
-            </p>
-            <p className="flex items-center gap-2 text-muted-foreground/50">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">3</span>
-              Account activation
-            </p>
+
+          <div className="mt-6 space-y-2 rounded-xl border border-border bg-muted/30 px-4 py-4 text-left">
+            {[
+              { num: "1", label: "Profil professionnel soumis", active: true, done: true },
+              { num: "2", label: "Révision des documents en cours", active: true, done: false },
+              { num: "3", label: "Activation du compte", active: false, done: false },
+            ].map(step => (
+              <div key={step.num} className={`flex items-center gap-3 text-sm ${step.active ? "text-foreground" : "text-muted-foreground/50"}`}>
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.done ? "bg-amber-200 text-amber-800" : step.active ? "bg-amber-100 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                  {step.num}
+                </span>
+                {step.label}
+              </div>
+            ))}
           </div>
+
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-            <Button asChild>
-              <a href="/">Back to home</a>
-            </Button>
+            <Button asChild><a href="/">Retour à l'accueil</a></Button>
             <Button variant="outline" asChild>
-              <a href="mailto:contact@nexelite.co">Contact support</a>
+              <a href="mailto:contact@nexelite.co">Contacter le support</a>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -350,32 +349,32 @@ function RejectedPage() {
   const reason = (user as any)?.profile?.rejectionReason || "";
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-lg">
-        <CardContent className="px-6 py-10 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100 text-rose-700">
+    <div className="flex min-h-[60vh] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
             <XCircle className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Application not approved</h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            Your business registration was not approved at this time.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Demande non approuvée</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Votre inscription professionnelle n'a pas été approuvée pour le moment.
           </p>
-          {reason ? (
-            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-left text-sm text-rose-800">
-              <p className="font-semibold">Reason provided:</p>
-              <p className="mt-1">{reason}</p>
+          {reason && (
+            <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-left text-sm text-rose-800">
+              <p className="font-semibold">Motif fourni :</p>
+              <p className="mt-1 leading-relaxed">{reason}</p>
             </div>
-          ) : null}
+          )}
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Button asChild>
-              <a href="mailto:contact@nexelite.co">Contact support</a>
+              <a href="mailto:contact@nexelite.co">Contacter le support</a>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/">Back to home</a>
+              <a href="/">Retour à l'accueil</a>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
@@ -385,33 +384,33 @@ function SuspendedPage() {
   const reason = (user as any)?.profile?.rejectionReason || "";
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-lg">
-        <CardContent className="px-6 py-10 text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 text-orange-700">
+    <div className="flex min-h-[60vh] items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
             <ShieldAlert className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Account suspended</h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            Your account has been suspended and marketplace operations are temporarily
-            unavailable. You can still access your notifications and contact support.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Compte suspendu</h1>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Votre compte a été suspendu et les opérations sur la marketplace sont temporairement
+            indisponibles. Vous pouvez toujours accéder à vos notifications et contacter le support.
           </p>
-          {reason ? (
-            <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-left text-sm text-orange-800">
-              <p className="font-semibold">Reason:</p>
-              <p className="mt-1">{reason}</p>
+          {reason && (
+            <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3.5 text-left text-sm text-orange-800">
+              <p className="font-semibold">Motif :</p>
+              <p className="mt-1 leading-relaxed">{reason}</p>
             </div>
-          ) : null}
+          )}
           <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <Button asChild>
-              <a href="mailto:contact@nexelite.co">Contact support</a>
+              <a href="mailto:contact@nexelite.co">Contacter le support</a>
             </Button>
             <Button variant="outline" asChild>
-              <a href="/">Back to home</a>
+              <a href="/">Retour à l'accueil</a>
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
