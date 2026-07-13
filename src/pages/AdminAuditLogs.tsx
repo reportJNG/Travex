@@ -40,11 +40,11 @@ export default function AdminAuditLogs() {
       <PageHeader
         eyebrow="Administration"
         title={t("admin.auditLogs")}
-        description="Complete record of admin actions — approvals, rejections, suspensions, claim decisions, and invoice marks."
+        description="Historique complet des validations, refus, suspensions, reprises d'hôtel et paiements de factures."
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`me-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-            Refresh
+            Actualiser
           </Button>
         }
       />
@@ -100,8 +100,8 @@ export default function AdminAuditLogs() {
       ) : (
         <EmptyState
           icon={<FileText className="h-6 w-6" />}
-          title="No audit logs yet"
-          description="Admin actions like approvals, rejections, and claim decisions will appear here."
+          title="Aucun journal d'audit"
+          description="Les actions admin comme les validations, refus et décisions de reprise apparaîtront ici."
         />
       )}
     </div>

@@ -103,7 +103,7 @@ export const adminRouter = createRouter({
   listClaims: adminQuery.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
       .from("hotel_claims")
-      .select("*, claimant:profiles(*), seeded_hotel:hotels(*, wilaya:wilayas(*))")
+      .select("*, claimant:profiles(*), seeded_hotel:hotels(*, country:countries(*), wilaya:wilayas(*))")
       .order("created_at", { ascending: false });
     if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
     return camelize(data ?? []);
@@ -130,7 +130,7 @@ export const adminRouter = createRouter({
   }),
 
   markInvoicePaid: adminQuery
-    .input(z.object({ invoiceId: z.string().uuid(), paymentReference: z.string() }))
+    .input(z.object({ invoiceId: z.string().uuid(), paymentReference: z.string().trim().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const admin = createSupabaseAdmin();
       const { error } = await admin
@@ -154,7 +154,7 @@ export const adminRouter = createRouter({
     }),
 
   generateInvoices: adminQuery
-    .input(z.object({ year: z.number(), month: z.number().min(1).max(12) }))
+    .input(z.object({ year: z.number().int().min(2024).max(2030), month: z.number().int().min(1).max(12) }))
     .mutation(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase.rpc("generate_monthly_invoices", {
         p_year: input.year,
@@ -175,7 +175,7 @@ export const adminRouter = createRouter({
     .query(async ({ ctx, input }) => {
       let query = ctx.supabase
         .from("bookings")
-        .select("*, agency:profiles(*), hotel:hotels(*, wilaya:wilayas(*))")
+        .select("*, agency:profiles(*), hotel:hotels(*, country:countries(*), wilaya:wilayas(*))")
         .eq("payment_method", "offline")
         .not("voucher_path", "is", null)
         .order("created_at", { ascending: false });

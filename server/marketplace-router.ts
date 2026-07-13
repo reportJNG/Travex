@@ -1,19 +1,22 @@
 import { z } from "zod";
-import { createRouter, authedQuery } from "./middleware";
+import { createRouter, authedQuery, publicQuery } from "./middleware";
 import { camelize } from "./lib/shape";
+
+const supportedCountry = z.enum(["DZ", "TN"]);
 
 export const marketplaceRouter = createRouter({
   listHotels: authedQuery
     .input(
       z.object({
-        wilaya: z.number().optional(),
-        minPrice: z.number().optional(),
-        maxPrice: z.number().optional(),
-        stars: z.number().optional(),
-        amenities: z.array(z.string()).optional(),
-        search: z.string().optional(),
-        page: z.number().default(1),
-        limit: z.number().default(12),
+        country: supportedCountry.optional(),
+        wilaya: z.number().int().positive().optional(),
+        minPrice: z.number().finite().min(0).optional(),
+        maxPrice: z.number().finite().min(0).optional(),
+        stars: z.number().int().min(1).max(5).optional(),
+        amenities: z.array(z.string().trim().min(1)).optional(),
+        search: z.string().trim().optional(),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(12),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -22,12 +25,13 @@ export const marketplaceRouter = createRouter({
       let query = ctx.supabase
         .from("hotels")
         .select(
-          "*, wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
+          "*, country:countries(*), wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
         )
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .range(from, to);
 
+      if (input.country) query = query.eq("country_code", input.country);
       if (input.wilaya) query = query.eq("wilaya_code", input.wilaya);
       if (input.stars) query = query.eq("star_rating", input.stars);
       if (input.search) query = query.ilike("name", `%${input.search}%`);
@@ -71,7 +75,7 @@ export const marketplaceRouter = createRouter({
       const { data, error } = await ctx.supabase
         .from("hotels")
         .select(
-          "*, wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
+          "*, country:countries(*), wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
         )
         .eq("id", input.id)
         .eq("rooms.is_active", true)
@@ -86,11 +90,25 @@ export const marketplaceRouter = createRouter({
       });
     }),
 
-  listWilayas: authedQuery.query(async ({ ctx }) => {
-    const { data, error } = await ctx.supabase.from("wilayas").select("*").order("code");
+  listCountries: publicQuery.query(async ({ ctx }) => {
+    const { data, error } = await ctx.supabase
+      .from("countries")
+      .select("*")
+      .eq("is_active", true)
+      .order("name_fr");
     if (error) throw error;
     return camelize(data ?? []);
   }),
+
+  listWilayas: publicQuery
+    .input(z.object({ country: supportedCountry.optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      let query = ctx.supabase.from("wilayas").select("*").order("country_code").order("code");
+      if (input?.country) query = query.eq("country_code", input.country);
+      const { data, error } = await query;
+      if (error) throw error;
+      return camelize(data ?? []);
+    }),
 
   listAmenities: authedQuery.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase.from("amenities").select("*").order("key");

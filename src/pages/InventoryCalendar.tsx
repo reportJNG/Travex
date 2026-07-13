@@ -3,14 +3,18 @@ import { Link } from "react-router";
 import {
   AlertCircle,
   ArrowLeft,
+  BedDouble,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
+  DoorClosed,
   Lock,
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/providers/trpc";
 import { PageHeader } from "@/components/app/PageHeader";
+import { StatCard } from "@/components/app/StatCard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,8 +37,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 
-type CalendarView = "month";
-
 function getDaysInMonth(year: number, month: number): Date[] {
   const days: Date[] = [];
   const firstDay = new Date(year, month, 1);
@@ -55,9 +57,11 @@ function fmtDate(d: Date): string {
 }
 
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
+
+const DAY_NAMES = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 export default function InventoryCalendar() {
   const today = new Date();
@@ -89,25 +93,25 @@ export default function InventoryCalendar() {
 
   async function handleCreateBlock() {
     if (!blockStart || !blockEnd || !blockReason) {
-      toast.error("Please fill in all required fields");
+      toast.error("Renseignez les champs obligatoires");
       return;
     }
     if (new Date(blockEnd) <= new Date(blockStart)) {
-      toast.error("End date must be after start date");
+      toast.error("La date de fin doit être après la date de début");
       return;
     }
     setIsSubmitting(true);
     try {
       // In production: call a mutation to create a manual block
       await new Promise((r) => setTimeout(r, 800));
-      toast.success("Block created successfully");
+      toast.success("Bloc créé");
       setBlockDialogOpen(false);
       setBlockStart("");
       setBlockEnd("");
       setBlockReason("");
       setBlockNote("");
     } catch {
-      toast.error("Failed to create block");
+      toast.error("Impossible de créer le bloc");
     } finally {
       setIsSubmitting(false);
     }
@@ -126,11 +130,11 @@ export default function InventoryCalendar() {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertTitle>No hotel profile</AlertTitle>
+        <AlertTitle>Aucun profil hôtel</AlertTitle>
         <AlertDescription>
-          You need to create your hotel profile first.{" "}
+          Créez votre profil hôtel avant d'utiliser le calendrier.{" "}
           <Link to="/inventory" className="font-medium underline">
-            Go to Inventory
+            Ouvrir l'inventaire
           </Link>
         </AlertDescription>
       </Alert>
@@ -152,42 +156,38 @@ export default function InventoryCalendar() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Hotel"
-        title="Availability Calendar"
-        description="View and manage room availability, holds, and manual blocks."
+        eyebrow="Espace hôtel"
+        title="Calendrier de disponibilité"
+        description="Suivez la capacité vendable, les chambres limitées et les blocs manuels depuis une vue mensuelle."
         actions={
           <div className="flex gap-2">
             <Button variant="outline" asChild>
               <Link to="/inventory">
                 <ArrowLeft className="me-1.5 h-4 w-4" />
-                Back to inventory
+                Inventaire
               </Link>
             </Button>
             <Button onClick={() => setBlockDialogOpen(true)}>
               <Plus className="me-1.5 h-4 w-4" />
-              Add block
+              Bloquer
             </Button>
           </div>
         }
       />
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded-full bg-emerald-500" />
-          <span>Available</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded-full bg-amber-500" />
-          <span>Partial hold</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded-full bg-rose-500" />
-          <span>Fully booked</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-3 w-3 rounded-full bg-slate-400" />
-          <span>Manual block</span>
+      <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">État du mois</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Les chiffres reflètent la chambre sélectionnée ou l'ensemble de l'hôtel.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Disponible</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />Limité</span>
+            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" />Complet</span>
+          </div>
         </div>
       </div>
 
@@ -208,17 +208,17 @@ export default function InventoryCalendar() {
             size="sm"
             onClick={() => { setYear(today.getFullYear()); setMonth(today.getMonth()); }}
           >
-            Today
+            Aujourd'hui
           </Button>
         </div>
 
         <div className="flex items-center gap-3">
           <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All rooms" />
+            <SelectTrigger className="w-full sm:w-52">
+              <SelectValue placeholder="Toutes les chambres" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All rooms</SelectItem>
+              <SelectItem value="all">Toutes les chambres</SelectItem>
               {rooms.map((room) => (
                 <SelectItem key={room.id} value={room.id}>
                   {room.name}
@@ -230,31 +230,31 @@ export default function InventoryCalendar() {
       </div>
 
       {/* Availability summary */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="p-4">
-            <div className="text-xs text-muted-foreground">Total capacity</div>
-            <div className="mt-1 text-2xl font-bold">{totalCapacity}</div>
-          </div>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="p-4">
-            <div className="text-xs text-muted-foreground">Available</div>
-            <div className="mt-1 text-2xl font-bold text-emerald-600">{available}</div>
-          </div>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="p-4">
-            <div className="text-xs text-muted-foreground">Held/Booked</div>
-            <div className="mt-1 text-2xl font-bold text-amber-600">{totalCapacity - available}</div>
-          </div>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="p-4">
-            <div className="text-xs text-muted-foreground">Rooms</div>
-            <div className="mt-1 text-2xl font-bold">{rooms.length}</div>
-          </div>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Capacité totale"
+          value={totalCapacity}
+          icon={<BedDouble className="h-5 w-5" />}
+          tone="blue"
+        />
+        <StatCard
+          label="Disponible"
+          value={available}
+          icon={<CheckCircle className="h-5 w-5" />}
+          tone="green"
+        />
+        <StatCard
+          label="Occupé / bloqué"
+          value={totalCapacity - available}
+          icon={<Lock className="h-5 w-5" />}
+          tone="amber"
+        />
+        <StatCard
+          label="Types de chambres"
+          value={rooms.length}
+          icon={<DoorClosed className="h-5 w-5" />}
+          tone="slate"
+        />
       </div>
 
       {/* Calendar grid */}
@@ -266,7 +266,7 @@ export default function InventoryCalendar() {
         </div>
         <div className="p-5">
           <div className="grid grid-cols-7 gap-1">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            {DAY_NAMES.map((d) => (
               <div
                 key={d}
                 className="py-2 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
@@ -297,11 +297,11 @@ export default function InventoryCalendar() {
                   </div>
                   {isCurrentMonth && !isPast && available > 0 ? (
                     <div className="rounded px-1 py-0.5 text-[10px] bg-emerald-100 text-emerald-800 font-medium">
-                      {available} avail.
+                      {available} dispo.
                     </div>
                   ) : isCurrentMonth && !isPast ? (
                     <div className="rounded px-1 py-0.5 text-[10px] bg-rose-100 text-rose-800 font-medium">
-                      Full
+                      Complet
                     </div>
                   ) : null}
                 </div>
@@ -315,7 +315,7 @@ export default function InventoryCalendar() {
       {rooms.length > 0 ? (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
           <div className="border-b border-border/60 px-5 py-4">
-            <h3 className="font-semibold text-foreground">Room inventory</h3>
+            <h3 className="font-semibold text-foreground">Détail des chambres</h3>
           </div>
           <div className="p-5">
             <div className="space-y-3">
@@ -331,7 +331,7 @@ export default function InventoryCalendar() {
                     <div className="min-w-0">
                       <div className="font-medium">{room.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        {Number(room.b2bRate).toLocaleString("fr-DZ")} DZD/night
+                        {Number(room.b2bRate).toLocaleString("fr-DZ")} DZD / nuit
                       </div>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
@@ -339,13 +339,13 @@ export default function InventoryCalendar() {
                         <div className="font-semibold text-emerald-600">
                           {avail}/{cap}
                         </div>
-                        <div className="text-xs text-muted-foreground">available</div>
+                        <div className="text-xs text-muted-foreground">disponible</div>
                       </div>
                       <Badge
                         variant={pct > 50 ? "secondary" : pct > 0 ? "outline" : "destructive"}
                         className="shrink-0"
                       >
-                        {pct > 50 ? "Available" : pct > 0 ? "Limited" : "Full"}
+                        {pct > 50 ? "Disponible" : pct > 0 ? "Limité" : "Complet"}
                       </Badge>
                       {!room.isActive ? (
                         <Lock className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -363,12 +363,12 @@ export default function InventoryCalendar() {
       <Sheet open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Create manual block</SheetTitle>
+            <SheetTitle>Créer un bloc manuel</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 py-4 px-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="block-start">Start date *</Label>
+                <Label htmlFor="block-start">Date début *</Label>
                 <Input
                   id="block-start"
                   type="date"
@@ -378,7 +378,7 @@ export default function InventoryCalendar() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="block-end">End date *</Label>
+                <Label htmlFor="block-end">Date fin *</Label>
                 <Input
                   id="block-end"
                   type="date"
@@ -390,13 +390,13 @@ export default function InventoryCalendar() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="block-room">Room type</Label>
+              <Label htmlFor="block-room">Type de chambre</Label>
               <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
                 <SelectTrigger id="block-room">
-                  <SelectValue placeholder="All rooms" />
+                  <SelectValue placeholder="Toutes les chambres" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All rooms</SelectItem>
+                  <SelectItem value="all">Toutes les chambres</SelectItem>
                   {rooms.map((room) => (
                     <SelectItem key={room.id} value={room.id}>
                       {room.name}
@@ -407,7 +407,7 @@ export default function InventoryCalendar() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="block-qty">Quantity to block *</Label>
+              <Label htmlFor="block-qty">Quantité à bloquer *</Label>
               <Input
                 id="block-qty"
                 type="number"
@@ -418,23 +418,23 @@ export default function InventoryCalendar() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="block-reason">Reason *</Label>
+              <Label htmlFor="block-reason">Motif *</Label>
               <Input
                 id="block-reason"
                 value={blockReason}
                 onChange={(e) => setBlockReason(e.target.value)}
-                placeholder="e.g., Renovation, Private event..."
+                placeholder="Rénovation, événement privé..."
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="block-note">Note (optional)</Label>
+              <Label htmlFor="block-note">Note (optionnel)</Label>
               <Textarea
                 id="block-note"
                 value={blockNote}
                 onChange={(e) => setBlockNote(e.target.value)}
                 rows={2}
-                placeholder="Additional notes..."
+                placeholder="Notes internes..."
               />
             </div>
           </div>
@@ -444,10 +444,10 @@ export default function InventoryCalendar() {
               onClick={() => setBlockDialogOpen(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              Annuler
             </Button>
             <Button onClick={handleCreateBlock} disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create block"}
+              {isSubmitting ? "Création..." : "Créer le bloc"}
             </Button>
           </SheetFooter>
         </SheetContent>

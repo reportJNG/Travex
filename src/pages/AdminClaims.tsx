@@ -27,7 +27,7 @@ export default function AdminClaims() {
       <PageHeader
         eyebrow="Administration"
         title={t("nav.claims")}
-        description="Review hotel ownership requests and approve verified takeovers."
+        description="Vérifiez les demandes de propriété d'hôtel et approuvez uniquement les reprises confirmées."
       />
 
       {isLoading ? (
@@ -38,11 +38,11 @@ export default function AdminClaims() {
             const seededHotel = claim.seededHotel as Record<string, unknown> | undefined;
             const claimant = claim.claimant as Record<string, unknown> | undefined;
             return (
-              <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div key={claim.id as string} className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="space-y-4 p-4 sm:p-5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Seeded hotel</div>
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Hôtel importé</div>
                       <h3 className="text-lg font-semibold">{(seededHotel?.name as string) || "-"}</h3>
                       <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5" />
@@ -53,11 +53,11 @@ export default function AdminClaims() {
                   </div>
 
                   <div className="rounded-lg border bg-muted/40 p-3">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Claimant</div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Demandeur</div>
                     <div className="mt-1 font-semibold">
                       {(claimant?.legalName as string) || (claimant?.fullName as string) || "-"}
                     </div>
-                    <div className="text-sm text-muted-foreground">{(claimant?.phone as string) || "No phone"}</div>
+                    <div className="text-sm text-muted-foreground">{(claimant?.phone as string) || "Aucun téléphone"}</div>
                   </div>
 
                   {claim.status === "pending" ? (
@@ -93,7 +93,7 @@ export default function AdminClaims() {
           })}
         </div>
       ) : (
-        <EmptyState icon={<FileText className="h-6 w-6" />} title="No claims to review" description="Hotel ownership claims will appear here when submitted." />
+        <EmptyState icon={<FileText className="h-6 w-6" />} title="Aucune demande de reprise" description="Les demandes de propriété d'hôtel apparaîtront ici après soumission." />
       )}
     </div>
   );

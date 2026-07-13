@@ -78,7 +78,7 @@ export default function AdminVerifications() {
       <PageHeader
         eyebrow="Administration"
         title={t("admin.pendingVerifications")}
-        description="Approve complete business profiles and capture a clear reason when rejecting an account."
+        description="Validez les profils professionnels complets et documentez clairement chaque refus."
       />
 
       {isLoading ? (
@@ -97,23 +97,26 @@ export default function AdminVerifications() {
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1 space-y-4">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-lg font-semibold">{(user.name as string) || "Unknown"}</h3>
+                        <h3 className="truncate text-lg font-semibold">{(user.name as string) || "Utilisateur inconnu"}</h3>
                         <span className="rounded-md border px-2 py-1 text-xs capitalize">{(user.role as string) || "unknown"}</span>
                         <StatusBadge status="awaiting_review">{t("status.awaiting_review")}</StatusBadge>
                       </div>
                       <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                        <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{(user.email as string) || "No email"}</span>
-                        <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{(profile?.legalName as string) || "No legal name"}</span>
+                        <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" />{(user.email as string) || "Aucun email"}</span>
+                        <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5" />{(profile?.legalName as string) || "Aucun nom légal"}</span>
                         <span className="flex items-center gap-1.5 font-medium text-foreground">
                           <Phone className="h-3.5 w-3.5 text-primary" />
-                          {phone || "No phone number"}
+                          {phone || "Aucun téléphone"}
                         </span>
-                        <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Wilaya: {(profile?.wilayaCode as number) || "-"}</span>
-                        {taxId ? <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Tax ID: {taxId}</span> : null}
-                        {licenseNumber ? <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />License: {licenseNumber}</span> : null}
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5" />
+                          Région : {[(profile?.countryCode as string) || "DZ", (profile?.wilayaCode as number) || "-"].join(" / ")}
+                        </span>
+                        {taxId ? <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />NIF : {taxId}</span> : null}
+                        {licenseNumber ? <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Agrément : {licenseNumber}</span> : null}
                       </div>
                       <Input
-                        placeholder="Rejection reason (required if rejecting)"
+                        placeholder="Motif de refus (obligatoire en cas de rejet)"
                         value={reasons[userId] || ""}
                         onChange={(event) => setReasons({ ...reasons, [userId]: event.target.value })}
                       />
@@ -125,7 +128,7 @@ export default function AdminVerifications() {
                         onClick={() => setDocsUserId(userId)}
                       >
                         <FileText className="me-1 h-4 w-4" />
-                        View Documents
+                        Voir documents
                       </Button>
                       <Button
                         size="sm"
@@ -141,7 +144,7 @@ export default function AdminVerifications() {
                         onClick={() => {
                           const reason = reasons[userId]?.trim();
                           if (!reason) {
-                            toast.error("Reason is required");
+                            toast.error("Le motif est obligatoire");
                             return;
                           }
                           reviewMutation.mutate({ userId, approve: false, reason });
@@ -161,8 +164,8 @@ export default function AdminVerifications() {
       ) : (
         <EmptyState
           icon={<Clock className="h-6 w-6" />}
-          title="All caught up"
-          description="There are no pending account verifications right now."
+          title="Aucun dossier en attente"
+          description="Il n'y a pas de compte à vérifier pour le moment."
         />
       )}
 
@@ -171,30 +174,30 @@ export default function AdminVerifications() {
         <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>
-              Business Documents — {(docsUser?.name as string) || "Unknown"}
+              Documents professionnels - {(docsUser?.name as string) || "Utilisateur inconnu"}
             </SheetTitle>
           </SheetHeader>
           <div className="mt-6 px-4">
             {businessDocuments ? (
               <div className="flex flex-col gap-4 sm:grid sm:grid-cols-1">
                 <DocumentSlot
-                  label="Commercial Registry"
+                  label="Registre de commerce"
                   path={businessDocuments.commercialRegistry || businessDocuments.commercial_registry}
                 />
                 <DocumentSlot
-                  label="Tourism License"
+                  label="Agrément tourisme"
                   path={businessDocuments.tourismLicense || businessDocuments.tourism_license}
                 />
                 <DocumentSlot
-                  label="Tax Card"
+                  label="Carte fiscale"
                   path={businessDocuments.taxCard || businessDocuments.tax_card}
                 />
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center text-muted-foreground">
                 <FileText className="h-10 w-10 opacity-40" />
-                <p className="font-medium">Documents pending upload</p>
-                <p className="text-sm">This applicant has not uploaded their business documents yet.</p>
+                <p className="font-medium">Documents non envoyés</p>
+                <p className="text-sm">Ce demandeur n'a pas encore ajouté ses documents professionnels.</p>
               </div>
             )}
           </div>

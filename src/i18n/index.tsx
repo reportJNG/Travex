@@ -28,6 +28,15 @@ const translations: Record<Locale, Record<string, string>> = {
     "no": "Non",
     "optional": "Optionnel",
     "required": "Requis",
+    "common.soon": "Bientôt",
+    "role.agency": "Agence",
+    "role.hotel": "Hôtel",
+    "role.super_admin": "Admin",
+    "workspace.current": "Espace actif",
+    "workspace.public": "Accueil public",
+    "workspace.agency": "Opérations agence",
+    "workspace.hotel": "Opérations hôtel",
+    "workspace.admin": "Centre admin",
 
     // Auth
     "auth.login": "Connexion",
@@ -58,9 +67,13 @@ const translations: Record<Locale, Record<string, string>> = {
 
     // Navigation
     "nav.home": "Accueil",
+    "nav.about": "À propos",
+    "nav.exploreHotels": "Explorer les hôtels",
+    "nav.transport": "Transport",
     "nav.marketplace": "Marketplace",
     "nav.dashboard": "Tableau de bord",
     "nav.inventory": "Inventaire",
+    "nav.calendar": "Calendrier",
     "nav.requests": "Demandes",
     "nav.analytics": "Analytiques",
     "nav.invoices": "Factures",
@@ -71,6 +84,14 @@ const translations: Record<Locale, Record<string, string>> = {
     "nav.claims": "Réclamations",
     "nav.profile": "Profil",
     "nav.notifications": "Notifications",
+    "nav.paymentReviews": "Paiements",
+    "nav.group.search": "Recherche",
+    "nav.group.finance": "Finance",
+    "nav.group.workspace": "Travail",
+    "nav.group.insights": "Insights",
+    "nav.group.command": "Commande",
+    "nav.group.reviews": "Revues",
+    "nav.group.operations": "Opérations",
 
     // Home
     "home.hero.title": "Travel Excellence",
@@ -226,6 +247,12 @@ const translations: Record<Locale, Record<string, string>> = {
     "footer.terms": "Conditions d'utilisation",
     "footer.privacy": "Politique de confidentialité",
     "footer.contact": "Contact",
+    "footer.description": "Marketplace hôtelière B2B conçue pour les professionnels du voyage en Afrique du Nord.",
+    "footer.solutions": "Solutions",
+    "footer.legal": "Légal",
+    "footer.partnerSupport": "Support partenaires",
+    "footer.apiDocs": "Documentation API",
+    "footer.made": "Fait pour l’Algérie et la Tunisie",
   },
   en: {
     "app.name": "TRAVEX",
@@ -251,6 +278,15 @@ const translations: Record<Locale, Record<string, string>> = {
     "no": "No",
     "optional": "Optional",
     "required": "Required",
+    "common.soon": "Soon",
+    "role.agency": "Agency",
+    "role.hotel": "Hotel",
+    "role.super_admin": "Admin",
+    "workspace.current": "Current workspace",
+    "workspace.public": "Public site",
+    "workspace.agency": "Agency operations",
+    "workspace.hotel": "Hotel operations",
+    "workspace.admin": "Admin command",
 
     "auth.login": "Login",
     "auth.logout": "Logout",
@@ -279,9 +315,13 @@ const translations: Record<Locale, Record<string, string>> = {
     "auth.of": "of",
 
     "nav.home": "Home",
+    "nav.about": "About",
+    "nav.exploreHotels": "Explore hotels",
+    "nav.transport": "Transport",
     "nav.marketplace": "Marketplace",
     "nav.dashboard": "Dashboard",
     "nav.inventory": "Inventory",
+    "nav.calendar": "Calendar",
     "nav.requests": "Requests",
     "nav.analytics": "Analytics",
     "nav.invoices": "Invoices",
@@ -292,6 +332,14 @@ const translations: Record<Locale, Record<string, string>> = {
     "nav.claims": "Claims",
     "nav.profile": "Profile",
     "nav.notifications": "Notifications",
+    "nav.paymentReviews": "Payment reviews",
+    "nav.group.search": "Search",
+    "nav.group.finance": "Finance",
+    "nav.group.workspace": "Workspace",
+    "nav.group.insights": "Insights",
+    "nav.group.command": "Command",
+    "nav.group.reviews": "Reviews",
+    "nav.group.operations": "Operations",
 
     "home.hero.title": "Travel Excellence",
     "home.hero.subtitle": "The leading B2B platform for travel professionals in Algeria",
@@ -436,6 +484,12 @@ const translations: Record<Locale, Record<string, string>> = {
     "footer.terms": "Terms of Use",
     "footer.privacy": "Privacy Policy",
     "footer.contact": "Contact",
+    "footer.description": "B2B hotel marketplace built for travel professionals in North Africa.",
+    "footer.solutions": "Solutions",
+    "footer.legal": "Legal",
+    "footer.partnerSupport": "Partner support",
+    "footer.apiDocs": "API documentation",
+    "footer.made": "Made for Algeria and Tunisia",
   },
   ar: {
     "app.name": "TRAVEX",
@@ -461,6 +515,15 @@ const translations: Record<Locale, Record<string, string>> = {
     "no": "لا",
     "optional": "اختياري",
     "required": "مطلوب",
+    "common.soon": "قريباً",
+    "role.agency": "وكالة",
+    "role.hotel": "فندق",
+    "role.super_admin": "مشرف",
+    "workspace.current": "مساحة العمل",
+    "workspace.public": "الموقع العام",
+    "workspace.agency": "عمليات الوكالة",
+    "workspace.hotel": "عمليات الفندق",
+    "workspace.admin": "مركز الإدارة",
 
     "auth.login": "تسجيل الدخول",
     "auth.logout": "تسجيل الخروج",
@@ -489,9 +552,13 @@ const translations: Record<Locale, Record<string, string>> = {
     "auth.of": "من",
 
     "nav.home": "الرئيسية",
+    "nav.about": "حول",
+    "nav.exploreHotels": "استكشاف الفنادق",
+    "nav.transport": "النقل",
     "nav.marketplace": "السوق",
     "nav.dashboard": "لوحة التحكم",
     "nav.inventory": "المخزون",
+    "nav.calendar": "التقويم",
     "nav.requests": "الطلبات",
     "nav.analytics": "التحليلات",
     "nav.invoices": "الفواتير",
@@ -502,6 +569,14 @@ const translations: Record<Locale, Record<string, string>> = {
     "nav.claims": "المطالبات",
     "nav.profile": "الملف الشخصي",
     "nav.notifications": "الإشعارات",
+    "nav.paymentReviews": "مراجعة المدفوعات",
+    "nav.group.search": "البحث",
+    "nav.group.finance": "المالية",
+    "nav.group.workspace": "العمل",
+    "nav.group.insights": "المؤشرات",
+    "nav.group.command": "التحكم",
+    "nav.group.reviews": "المراجعات",
+    "nav.group.operations": "العمليات",
 
     "home.hero.title": "تميز السفر",
     "home.hero.subtitle": "منصة B2B الرائدة لمحترفي السفر في الجزائر",
@@ -646,6 +721,12 @@ const translations: Record<Locale, Record<string, string>> = {
     "footer.terms": "شروط الاستخدام",
     "footer.privacy": "سياسة الخصوصية",
     "footer.contact": "اتصل بنا",
+    "footer.description": "سوق فنادق B2B مخصص لمحترفي السفر في شمال أفريقيا.",
+    "footer.solutions": "الحلول",
+    "footer.legal": "القانوني",
+    "footer.partnerSupport": "دعم الشركاء",
+    "footer.apiDocs": "توثيق API",
+    "footer.made": "مصمم للجزائر وتونس",
   },
 };
 
@@ -653,11 +734,15 @@ const I18nContext = createContext<{
   locale: Locale;
   setLocale: (l: Locale) => void;
   t: (key: string) => string;
+  formatCurrency: (value: number, currency?: string) => string;
+  formatDate: (value: string | Date, options?: Intl.DateTimeFormatOptions) => string;
   dir: "ltr" | "rtl";
 }>({
   locale: "fr",
   setLocale: () => {},
   t: (key: string) => key,
+  formatCurrency: value => `${value}`,
+  formatDate: value => String(value),
   dir: "ltr",
 });
 
@@ -682,9 +767,26 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   );
 
   const dir = locale === "ar" ? "rtl" : "ltr";
+  const intlLocale = locale === "ar" ? "ar-DZ" : locale === "en" ? "en-GB" : "fr-DZ";
+
+  const formatCurrency = useCallback(
+    (value: number, currency = "DZD") =>
+      new Intl.NumberFormat(intlLocale, {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 0,
+      }).format(value),
+    [intlLocale],
+  );
+
+  const formatDate = useCallback(
+    (value: string | Date, options?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat(intlLocale, options ?? { dateStyle: "medium" }).format(new Date(value)),
+    [intlLocale],
+  );
 
   return (
-    <I18nContext.Provider value={{ locale, setLocale, t, dir }}>
+    <I18nContext.Provider value={{ locale, setLocale, t, formatCurrency, formatDate, dir }}>
       {children}
     </I18nContext.Provider>
   );

@@ -51,6 +51,19 @@ export const users = pgTable("users", {
   lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull(),
 });
 
+// ── Countries and Regions ──────────────────────────────────────────
+export const countries = pgTable("countries", {
+  code: varchar("code", { length: 2 }).primaryKey(),
+  iso3: varchar("iso3", { length: 3 }).notNull().unique(),
+  nameFr: varchar("name_fr", { length: 100 }).notNull(),
+  nameAr: varchar("name_ar", { length: 100 }).notNull(),
+  nameEn: varchar("name_en", { length: 100 }).notNull(),
+  currencyCode: varchar("currency_code", { length: 3 }).notNull(),
+  phonePrefix: varchar("phone_prefix", { length: 8 }).notNull(),
+  defaultLocale: varchar("default_locale", { length: 2 }).default("fr").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+});
+
 // ── Profiles (extended user data) ──────────────────────────────────
 export const profiles = pgTable("profiles", {
   id: integer("id").primaryKey()
@@ -58,6 +71,8 @@ export const profiles = pgTable("profiles", {
   fullName: varchar("full_name", { length: 255 }).notNull(),
   legalName: varchar("legal_name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
+  countryCode: varchar("country_code", { length: 2 }).default("DZ").notNull()
+    .references(() => countries.code),
   wilayaCode: integer("wilaya_code"),
   taxId: varchar("tax_id", { length: 100 }),
   licenseNumber: varchar("license_number", { length: 100 }),
@@ -80,9 +95,12 @@ export const businessDocuments = pgTable("business_documents", {
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
-// ── Wilayas (Algerian provinces) ───────────────────────────────────
+// Kept as wilayas for backward compatibility; now stores country regions.
 export const wilayas = pgTable("wilayas", {
   code: integer("code").primaryKey(),
+  countryCode: varchar("country_code", { length: 2 }).default("DZ").notNull()
+    .references(() => countries.code),
+  regionType: varchar("region_type", { length: 50 }).default("wilaya").notNull(),
   nameFr: varchar("name_fr", { length: 100 }).notNull(),
   nameAr: varchar("name_ar", { length: 100 }).notNull(),
   nameEn: varchar("name_en", { length: 100 }).notNull(),
@@ -114,6 +132,8 @@ export const hotels = pgTable("hotels", {
   isActive: boolean("is_active").default(true).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  countryCode: varchar("country_code", { length: 2 }).default("DZ").notNull()
+    .references(() => countries.code),
   wilayaCode: integer("wilaya_code").notNull(),
   address: text("address"),
   starRating: integer("star_rating"),
@@ -298,6 +318,7 @@ export const auditLogs = pgTable("audit_logs", {
 // ── Type exports ───────────────────────────────────────────────────
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type Country = typeof countries.$inferSelect;
 export type Profile = typeof profiles.$inferSelect;
 export type InsertProfile = typeof profiles.$inferInsert;
 export type Hotel = typeof hotels.$inferSelect;

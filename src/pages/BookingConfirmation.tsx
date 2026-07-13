@@ -64,27 +64,26 @@ export default function BookingConfirmation() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={isConfirmed ? "Booking Confirmed" : "Booking Status"}
-        title={isConfirmed ? "Your booking is confirmed" : "Booking details"}
-        description={`Reference: ${reference}`}
+        eyebrow={isConfirmed ? "Réservation confirmée" : "Statut de réservation"}
+        title={isConfirmed ? "Votre réservation est confirmée" : "Détails de réservation"}
+        description={`Référence : ${reference}`}
       />
 
       {isConfirmed ? (
         <Alert className="border-emerald-300 bg-emerald-50 text-emerald-900 [&>svg]:text-emerald-600">
           <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Confirmed — enjoy your stay!</AlertTitle>
+          <AlertTitle>Confirmée</AlertTitle>
           <AlertDescription>
-            Your reservation at <strong>{hotel.name}</strong> is confirmed. The
-            hotel has been notified and is expecting your arrival.
+            Votre réservation chez <strong>{hotel.name}</strong> est confirmée.
+            L'hôtel a été notifié et prépare votre arrivée.
           </AlertDescription>
         </Alert>
       ) : isPending ? (
         <Alert className="border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600">
           <Clock className="h-4 w-4" />
-          <AlertTitle>Awaiting confirmation</AlertTitle>
+          <AlertTitle>Confirmation en attente</AlertTitle>
           <AlertDescription>
-            Your booking is pending. Follow the payment or hotel review process
-            to complete your reservation.
+            La réservation est en attente. Suivez les étapes de paiement ou de validation hôtel pour la finaliser.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -107,7 +106,7 @@ export default function BookingConfirmation() {
                     <h2 className="text-xl font-semibold">{hotel.name}</h2>
                     <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                       <MapPin className="h-3.5 w-3.5 shrink-0" />
-                      {hotel.address || hotel.wilaya?.nameFr || "Algeria"}
+                      {hotel.address || [hotel.wilaya?.nameFr, hotel.country?.nameFr].filter(Boolean).join(", ") || "North Africa"}
                     </p>
                     {hotel.phone ? (
                       <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">

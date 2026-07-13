@@ -70,9 +70,13 @@ export default function AdminDashboard() {
   const { data: stats, refetch, isFetching } = trpc.admin.stats.useQuery();
   const { data: pendingUsers } = trpc.admin.listUsers.useQuery({ status: "awaiting_review" });
   const { data: invoices } = trpc.admin.listInvoices.useQuery();
+  const { data: pendingPayments } = trpc.admin.listPaymentVerifications.useQuery({
+    status: "awaiting_admin_payment_verification",
+  });
 
   const commission = stats ? stats.transactionsVolume * 0.05 : 0;
   const recentInvoices = invoices?.slice(0, 5) ?? [];
+  const overdueInvoices = invoices?.filter((invoice: any) => invoice.status === "overdue").length ?? 0;
 
   return (
     <div>
@@ -89,20 +93,21 @@ export default function AdminDashboard() {
       />
 
       {/* Pending review alert */}
-      {pendingUsers && pendingUsers.length > 0 && (
-        <div className="mb-6 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-800">
+      {((pendingUsers?.length ?? 0) > 0 || (pendingPayments?.length ?? 0) > 0 || overdueInvoices > 0) && (
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-900 lg:flex-row lg:items-center">
           <CheckCircle className="h-5 w-5 shrink-0 text-amber-600" />
-          <span>
-            <span className="font-semibold">{pendingUsers.length}</span> compte{pendingUsers.length !== 1 ? "s" : ""} en attente de révision.
-          </span>
-          <Button
-            size="sm"
-            asChild
-            variant="outline"
-            className="ms-auto border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-800"
-          >
-            <Link to="/admin/verifications">Réviser maintenant</Link>
-          </Button>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold">Files à traiter : </span>
+            {(pendingUsers?.length ?? 0)} comptes, {(pendingPayments?.length ?? 0)} paiements, {overdueInvoices} factures en retard.
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" asChild variant="outline" className="border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-800">
+              <Link to="/admin/verifications">Comptes</Link>
+            </Button>
+            <Button size="sm" asChild variant="outline" className="border-amber-300 bg-amber-100 hover:bg-amber-200 text-amber-800">
+              <Link to="/admin/payment-verifications">Paiements</Link>
+            </Button>
+          </div>
         </div>
       )}
 
@@ -128,9 +133,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* Commission & Revenue */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {!stats ? (
-          Array.from({ length: 2 }).map((_, i) => (
+          Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24 rounded-xl" />
           ))
         ) : (
@@ -146,6 +151,18 @@ export default function AdminDashboard() {
               value={`${commission.toLocaleString("fr-DZ", { maximumFractionDigits: 0 })} DZD`}
               icon={<DollarSign className="h-5 w-5" />}
               tone="green"
+            />
+            <StatCard
+              label="Comptes à vérifier"
+              value={pendingUsers?.length ?? 0}
+              icon={<Shield className="h-5 w-5" />}
+              tone="amber"
+            />
+            <StatCard
+              label="Paiements à vérifier"
+              value={pendingPayments?.length ?? 0}
+              icon={<Eye className="h-5 w-5" />}
+              tone="violet"
             />
           </>
         )}
@@ -203,9 +220,9 @@ export default function AdminDashboard() {
                   ) : (
                     <>
                       {[
-                        { name: "Hotel Sofitel Algiers", period: "2026-06", amount: "24 500", status: "paid", label: "Payé" },
-                        { name: "Hilton Oran", period: "2026-06", amount: "18 200", status: "awaiting_review", label: "En grâce" },
-                        { name: "Riadh Palms Constantine", period: "2026-06", amount: "9 750", status: "rejected", label: "En retard" },
+                        { name: "Dar El Marsa Tunis", period: "2026-06", amount: "31 400", status: "paid", label: "Payé" },
+                        { name: "Royal Oran Business", period: "2026-06", amount: "18 200", status: "awaiting_review", label: "En grâce" },
+                        { name: "Constantine Bridge Hotel", period: "2026-06", amount: "9 750", status: "rejected", label: "En retard" },
                       ].map(row => (
                         <TableRow key={row.name} className="hover:bg-muted/30 transition-colors">
                           <TableCell className="font-medium py-3">{row.name}</TableCell>

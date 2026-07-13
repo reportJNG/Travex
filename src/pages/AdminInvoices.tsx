@@ -23,14 +23,23 @@ import { trpc } from "@/providers/trpc";
 
 function GenerateInvoicesForm() {
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(String(now.getFullYear()));
+  const [month, setMonth] = useState(String(now.getMonth() + 1));
   const utils = trpc.useUtils();
+  const parsedYear = Number(year);
+  const parsedMonth = Number(month);
+  const canGenerate =
+    Number.isInteger(parsedYear) &&
+    parsedYear >= 2024 &&
+    parsedYear <= 2030 &&
+    Number.isInteger(parsedMonth) &&
+    parsedMonth >= 1 &&
+    parsedMonth <= 12;
 
   const generateMutation = trpc.admin.generateInvoices.useMutation({
     onSuccess: data => {
       toast.success(
-        `Generated ${data.count} invoice${data.count !== 1 ? "s" : ""}`
+        `${data.count} facture${data.count !== 1 ? "s" : ""} générée${data.count !== 1 ? "s" : ""}`
       );
       utils.admin.listInvoices.invalidate();
     },
@@ -42,56 +51,63 @@ function GenerateInvoicesForm() {
       <div className="px-5 pt-5 pb-0">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <Calendar className="h-5 w-5 text-primary" />
-          Generate monthly invoices
+          Générer les factures mensuelles
         </h3>
       </div>
       <div className="px-5 py-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="space-y-1.5">
-            <Label>Year</Label>
+            <Label>Année</Label>
             <Input
               type="number"
               value={year}
-              onChange={e =>
-                setYear(parseInt(e.target.value) || now.getFullYear())
-              }
+              onChange={e => setYear(e.target.value)}
+              onBlur={e => {
+                const parsed = Number(e.target.value);
+                setYear(String(Number.isInteger(parsed) && parsed >= 2024 && parsed <= 2030 ? parsed : now.getFullYear()));
+              }}
               className="w-28"
               min={2024}
               max={2030}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Month</Label>
+            <Label>Mois</Label>
             <Input
               type="number"
               value={month}
-              onChange={e =>
-                setMonth(
-                  Math.min(12, Math.max(1, parseInt(e.target.value) || 1))
-                )
-              }
+              onChange={e => setMonth(e.target.value)}
+              onBlur={e => {
+                const parsed = Number(e.target.value);
+                setMonth(String(Number.isInteger(parsed) && parsed >= 1 && parsed <= 12 ? parsed : now.getMonth() + 1));
+              }}
               className="w-20"
               min={1}
               max={12}
             />
           </div>
           <ConfirmAction
-            title="Generate invoices?"
-            description={`This will create commission invoices for all hotels for ${year}-${String(month).padStart(2, "0")}. Existing invoices for this period will be skipped.`}
-            confirmLabel="Generate"
-            onConfirm={() => generateMutation.mutate({ year, month })}
+            title="Générer les factures ?"
+            description={`This will create commission invoices for all hotels for ${parsedYear}-${String(parsedMonth).padStart(2, "0")}. Existing invoices for this period will be skipped.`}
+            confirmLabel="Générer"
+            onConfirm={() => {
+              if (!canGenerate) {
+                toast.error("Saisissez une année et un mois valides");
+                return;
+              }
+              generateMutation.mutate({ year: parsedYear, month: parsedMonth });
+            }}
           >
-            <Button disabled={generateMutation.isPending}>
+            <Button disabled={generateMutation.isPending || !canGenerate}>
               <RefreshCw
                 className={`me-2 h-4 w-4 ${generateMutation.isPending ? "animate-spin" : ""}`}
               />
-              Generate invoices
+              Générer
             </Button>
           </ConfirmAction>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Generates commission invoices at 5% rate for all confirmed bookings in
-          the selected period.
+          Génère les factures de commission à 5% pour toutes les réservations confirmées de la période.
         </p>
       </div>
     </div>
@@ -104,7 +120,7 @@ function MarkPaidDialog({ invoice }: { invoice: Record<string, unknown> }) {
 
   const markPaid = trpc.admin.markInvoicePaid.useMutation({
     onSuccess: () => {
-      toast.success("Invoice marked as paid");
+      toast.success("Facture marquée comme payée");
       utils.admin.listInvoices.invalidate();
       setPaymentRef("");
     },
@@ -117,20 +133,20 @@ function MarkPaidDialog({ invoice }: { invoice: Record<string, unknown> }) {
     <div className="mt-3 border-t pt-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex-1 space-y-1.5">
-          <Label className="text-xs">Payment reference</Label>
+          <Label className="text-xs">Référence paiement</Label>
           <Input
-            placeholder="CCP/CIB transfer reference..."
+            placeholder="Référence virement CCP/CIB..."
             value={paymentRef}
             onChange={e => setPaymentRef(e.target.value)}
           />
         </div>
         <ConfirmAction
-          title="Mark invoice as paid?"
+          title="Marquer la facture comme payée ?"
           description={`Confirm payment of ${Number(invoice.commissionDue).toLocaleString()} DZD for ${(invoice.hotel as any)?.name || "this hotel"}.`}
-          confirmLabel="Mark paid"
+          confirmLabel="Marquer payée"
           onConfirm={() => {
             if (!paymentRef.trim()) {
-              toast.error("Payment reference is required");
+              toast.error("La référence de paiement est obligatoire");
               return;
             }
             markPaid.mutate({
@@ -141,7 +157,7 @@ function MarkPaidDialog({ invoice }: { invoice: Record<string, unknown> }) {
         >
           <Button size="sm" disabled={markPaid.isPending || !paymentRef.trim()}>
             <CheckCircle className="me-1 h-4 w-4" />
-            Mark paid
+            Marquer payée
           </Button>
         </ConfirmAction>
       </div>
@@ -171,7 +187,7 @@ export default function AdminInvoices() {
       <PageHeader
         eyebrow="Administration"
         title={t("admin.invoices")}
-        description="Generate, review, and mark monthly hotel commission invoices as paid."
+        description="Générez, vérifiez et marquez les factures mensuelles de commission hôtel comme payées."
       />
 
       <GenerateInvoicesForm />
@@ -182,19 +198,19 @@ export default function AdminInvoices() {
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-3">
             <StatCard
-              label="Unpaid commissions"
+              label="Commissions impayées"
               value={`${(totalUnpaid / 1000).toFixed(1)}K DZD`}
               icon={<AlertCircle className="h-5 w-5" />}
               tone="amber"
             />
             <StatCard
-              label="Overdue"
+              label="En retard"
               value={`${(totalOverdue / 1000).toFixed(1)}K DZD`}
               icon={<AlertCircle className="h-5 w-5" />}
               tone="slate"
             />
             <StatCard
-              label="Collected"
+              label="Collecté"
               value={`${(totalPaid / 1000).toFixed(1)}K DZD`}
               icon={<Receipt className="h-5 w-5" />}
               tone="green"
@@ -206,7 +222,7 @@ export default function AdminInvoices() {
               const hotel = inv.hotel as Record<string, unknown> | undefined;
               const period = `${inv.periodYear}-${String(inv.periodMonth).padStart(2, "0")}`;
               return (
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div key={inv.id as string} className="overflow-hidden rounded-xl border border-border bg-card">
                   <div className="p-4 sm:p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
@@ -216,7 +232,7 @@ export default function AdminInvoices() {
                           </div>
                           <div className="min-w-0">
                             <h3 className="truncate font-semibold">
-                              {(hotel?.name as string) || "Unknown hotel"}
+                              {(hotel?.name as string) || "Hôtel inconnu"}
                             </h3>
                             <p className="text-xs text-muted-foreground">
                               {period}
@@ -226,7 +242,7 @@ export default function AdminInvoices() {
                         <div className="grid gap-3 text-sm sm:grid-cols-3">
                           <div>
                             <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Bookings total
+                              Total réservations
                             </span>
                             <p className="mt-0.5 font-semibold">
                               {Number(inv.bookingsTotal).toLocaleString()} DZD
@@ -242,7 +258,7 @@ export default function AdminInvoices() {
                           </div>
                           <div>
                             <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                              Due date
+                              Échéance
                             </span>
                             <p className="mt-0.5 font-semibold">
                               {inv.dueDate as string}
@@ -251,7 +267,7 @@ export default function AdminInvoices() {
                           {inv.paidAt ? (
                             <div>
                               <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Paid at
+                                Payé le
                               </span>
                               <p className="mt-0.5 font-semibold">
                                 {new Date(
@@ -263,7 +279,7 @@ export default function AdminInvoices() {
                           {inv.paymentReference ? (
                             <div>
                               <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                                Payment ref
+                                Référence paiement
                               </span>
                               <p className="mt-0.5 font-mono text-xs">
                                 {inv.paymentReference as string}
@@ -289,8 +305,8 @@ export default function AdminInvoices() {
           <div className="p-6">
             <EmptyState
               icon={<FileText className="h-6 w-6" />}
-              title="No invoices yet"
-              description="Use the form above to generate monthly invoices for all hotels."
+              title="Aucune facture"
+              description="Utilisez le formulaire ci-dessus pour générer les factures mensuelles des hôtels."
             />
           </div>
         </div>

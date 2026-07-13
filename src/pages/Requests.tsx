@@ -174,7 +174,7 @@ export default function Requests() {
       <PageHeader
         eyebrow="Espace hôtel"
         title={t("requests.title")}
-        description="Examinez les réservations, gérez les fenêtres de paiement et mainteneez une communication claire avec les agences."
+        description="Examinez les réservations, gérez les fenêtres de paiement et maintenez une communication claire avec les agences."
       />
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">

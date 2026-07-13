@@ -7,18 +7,31 @@ function rpcError(error: { message: string }) {
   return new TRPCError({ code: "BAD_REQUEST", message: error.message });
 }
 
+const bookingDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const parsed = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
+  }, "Invalid booking date");
+
+const createBookingInput = z
+  .object({
+    hotelId: z.string().uuid(),
+    roomTypeId: z.string().uuid(),
+    checkIn: bookingDate,
+    checkOut: bookingDate,
+    roomsCount: z.number().int().min(1).max(20),
+    paymentMethod: z.enum(["cib", "edahabia", "offline"]),
+  })
+  .refine(({ checkIn, checkOut }) => new Date(checkOut) > new Date(checkIn), {
+    message: "Check-out must be after check-in",
+    path: ["checkOut"],
+  });
+
 export const bookingRouter = createRouter({
   create: agencyQuery
-    .input(
-      z.object({
-        hotelId: z.string().uuid(),
-        roomTypeId: z.string().uuid(),
-        checkIn: z.string(),
-        checkOut: z.string(),
-        roomsCount: z.number().int().min(1).max(20),
-        paymentMethod: z.enum(["cib", "edahabia", "offline"]),
-      })
-    )
+    .input(createBookingInput)
     .mutation(async ({ ctx, input }) => {
       if (input.paymentMethod === "offline") {
         const { data, error } = await ctx.supabase.rpc(
@@ -67,7 +80,7 @@ export const bookingRouter = createRouter({
   myBookings: agencyQuery.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
       .from("bookings")
-      .select("*, hotel:hotels(*, wilaya:wilayas(*)), room_type:room_types(*)")
+      .select("*, hotel:hotels(*, country:countries(*), wilaya:wilayas(*)), room_type:room_types(*)")
       .eq("agency_id", ctx.user.id)
       .eq("archived_by_agency", false)
       .order("created_at", { ascending: false });
@@ -121,7 +134,7 @@ export const bookingRouter = createRouter({
     .query(async ({ ctx, input }) => {
       const { data, error } = await ctx.supabase
         .from("bookings")
-        .select("*, hotel:hotels(*, wilaya:wilayas(*), hotel_payment_settings:hotel_payment_settings(*)), room_type:room_types(*)")
+        .select("*, hotel:hotels(*, country:countries(*), wilaya:wilayas(*), hotel_payment_settings:hotel_payment_settings(*)), room_type:room_types(*)")
         .eq("id", input.bookingId)
         .eq("agency_id", ctx.user.id)
         .maybeSingle();

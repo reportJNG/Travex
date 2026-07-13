@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { useI18n } from "@/i18n";
 import { useAuth } from "@/hooks/useAuth";
+import { trpc } from "@/providers/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,10 +25,11 @@ const stats = [
   { value: "58", label: "Wilayas couvertes", icon: MapPin },
 ];
 
-const wilayas = [
-  "Alger", "Oran", "Constantine", "Annaba", "Blida",
-  "Sétif", "Béjaïa", "Tlemcen", "Batna", "Tizi Ouzou",
-];
+function parseRooms(value: string) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return 1;
+  return Math.min(50, Math.max(1, parsed));
+}
 
 const curatedHotels = [
   {
@@ -99,16 +101,21 @@ export default function Home() {
 
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
+  const [country, setCountry] = useState<"DZ" | "TN">("DZ");
   const [wilaya, setWilaya] = useState("");
-  const [rooms, setRooms] = useState(1);
+  const [rooms, setRooms] = useState("1");
+  const { data: countries } = trpc.marketplace.listCountries.useQuery();
+  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery({ country });
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     const params = new URLSearchParams();
     if (checkin) params.set("checkin", checkin);
     if (checkout) params.set("checkout", checkout);
+    if (country) params.set("country", country);
     if (wilaya) params.set("wilaya", wilaya);
-    if (rooms > 1) params.set("rooms", String(rooms));
+    const parsedRooms = parseRooms(rooms);
+    if (parsedRooms > 1) params.set("rooms", String(parsedRooms));
     navigate(`/marketplace${params.toString() ? `?${params}` : ""}`);
   }
 
@@ -189,16 +196,34 @@ export default function Home() {
                 <div className="flex flex-1 min-w-[150px] flex-col gap-1.5">
                   <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
                     <MapPin className="h-3 w-3" />
-                    Wilaya
+                    Pays
+                  </label>
+                  <select
+                    value={country}
+                    onChange={e => {
+                      setCountry(e.target.value as "DZ" | "TN");
+                      setWilaya("");
+                    }}
+                    className="w-full rounded-lg border border-white/20 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {countries?.map(c => (
+                      <option key={c.code} value={c.code}>{c.nameFr}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-1 min-w-[150px] flex-col gap-1.5">
+                  <label className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
+                    <MapPin className="h-3 w-3" />
+                    {country === "TN" ? "Gouvernorat" : "Wilaya"}
                   </label>
                   <select
                     value={wilaya}
                     onChange={e => setWilaya(e.target.value)}
                     className="w-full rounded-lg border border-white/20 bg-slate-900/60 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="">Toutes les wilayas</option>
-                    {wilayas.map(w => (
-                      <option key={w} value={w}>{w}</option>
+                    <option value="">{country === "TN" ? "Tous les gouvernorats" : "Toutes les wilayas"}</option>
+                    {wilayas?.map(w => (
+                      <option key={w.code} value={String(w.code)}>{w.nameFr}</option>
                     ))}
                   </select>
                 </div>
@@ -211,7 +236,8 @@ export default function Home() {
                     min={1}
                     max={50}
                     value={rooms}
-                    onChange={e => setRooms(Number(e.target.value))}
+                    onChange={e => setRooms(e.target.value)}
+                    onBlur={e => setRooms(String(parseRooms(e.target.value)))}
                     className="w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>

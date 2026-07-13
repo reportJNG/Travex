@@ -39,22 +39,27 @@ import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
 
 const hotelSchema = z.object({
-  name: z.string().min(2, "Hotel name must be at least 2 characters"),
+  name: z.string().trim().min(2, "Hotel name must be at least 2 characters"),
+  countryCode: z.enum(["DZ", "TN"], { message: "Please select a country" }),
   wilayaCode: z.number().min(1, "Please select a wilaya"),
-  email: z.string().email("Enter a valid email").optional().or(z.literal("")),
+  email: z.string().trim().email("Enter a valid email").optional().or(z.literal("")),
 });
 
 const roomSchema = z.object({
-  name: z.string().min(1, "Room name is required"),
-  totalCapacity: z.number().int().min(1, "Capacity must be at least 1"),
+  name: z.string().trim().min(1, "Room name is required"),
+  totalCapacity: z
+    .string()
+    .refine(v => Number.isInteger(Number(v)) && Number(v) >= 1, {
+      message: "Capacity must be at least 1",
+    }),
   b2bRate: z
     .string()
-    .refine(v => !v || Number(v) > 0, {
+    .refine(v => Number.isFinite(Number(v)) && Number(v) > 0, {
       message: "Rate must be greater than 0",
     }),
 });
 
-type HotelErrors = Partial<Record<"name" | "wilayaCode" | "email", string>>;
+type HotelErrors = Partial<Record<"name" | "countryCode" | "wilayaCode" | "email", string>>;
 type RoomErrors = Partial<Record<"name" | "totalCapacity" | "b2bRate", string>>;
 type PaymentMethod = "online" | "offline" | "both";
 const ROOM_TYPES = ["Single", "Double", "Triple", "Family Suite"] as const;
@@ -115,12 +120,6 @@ export default function Inventory() {
   const { t } = useI18n();
   const utils = trpc.useUtils();
   const { data: hotel, isLoading } = trpc.hotel.myHotel.useQuery();
-  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery();
-  const { data: invoices } = trpc.hotel.myInvoices.useQuery();
-  const [editMode, setEditMode] = useState(false);
-  const [showAddRoom, setShowAddRoom] = useState(false);
-  const [hotelErrors, setHotelErrors] = useState<HotelErrors>({});
-  const [roomErrors, setRoomErrors] = useState<RoomErrors>({});
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -128,14 +127,22 @@ export default function Inventory() {
     phone: "",
     email: "",
     starRating: 3,
+    countryCode: "DZ" as "DZ" | "TN",
     wilayaCode: 16,
     websiteUrl: "",
     facebookUrl: "",
     instagramUrl: "",
   });
+  const { data: countries } = trpc.marketplace.listCountries.useQuery();
+  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery({ country: form.countryCode });
+  const { data: invoices } = trpc.hotel.myInvoices.useQuery();
+  const [editMode, setEditMode] = useState(false);
+  const [showAddRoom, setShowAddRoom] = useState(false);
+  const [hotelErrors, setHotelErrors] = useState<HotelErrors>({});
+  const [roomErrors, setRoomErrors] = useState<RoomErrors>({});
   const [roomForm, setRoomForm] = useState({
     name: "",
-    totalCapacity: 1,
+    totalCapacity: "1",
     b2bRate: "",
     roomType: "Single",
   });
@@ -173,7 +180,7 @@ export default function Inventory() {
       setShowAddRoom(false);
       setRoomForm({
         name: "",
-        totalCapacity: 1,
+        totalCapacity: "1",
         b2bRate: "",
         roomType: "Single",
       });
@@ -202,6 +209,7 @@ export default function Inventory() {
       phone: (hotel.phone as string) || "",
       email: (hotel.email as string) || "",
       starRating: (hotel.starRating as number) || 3,
+      countryCode: ((hotel.countryCode as "DZ" | "TN") || "DZ"),
       wilayaCode: hotel.wilayaCode || 16,
       websiteUrl: (hotel.websiteUrl as string) || "",
       facebookUrl: (hotel.facebookUrl as string) || "",
@@ -213,6 +221,7 @@ export default function Inventory() {
   const validateHotelForm = (): boolean => {
     const result = hotelSchema.safeParse({
       name: form.name,
+      countryCode: form.countryCode,
       wilayaCode: form.wilayaCode,
       email: form.email,
     });
@@ -251,28 +260,30 @@ export default function Inventory() {
   const handleCreate = () => {
     if (!validateHotelForm()) return;
     createHotel.mutate({
-      name: form.name,
-      description: form.description || undefined,
+      name: form.name.trim(),
+      description: form.description.trim() || undefined,
+      countryCode: form.countryCode,
       wilayaCode: form.wilayaCode,
-      address: form.address || undefined,
+      address: form.address.trim() || undefined,
       starRating: form.starRating,
-      phone: form.phone || undefined,
-      email: form.email || undefined,
-      websiteUrl: form.websiteUrl || undefined,
-      facebookUrl: form.facebookUrl || undefined,
-      instagramUrl: form.instagramUrl || undefined,
+      phone: form.phone.trim() || undefined,
+      email: form.email.trim() || undefined,
+      websiteUrl: form.websiteUrl.trim() || undefined,
+      facebookUrl: form.facebookUrl.trim() || undefined,
+      instagramUrl: form.instagramUrl.trim() || undefined,
     });
   };
 
   const handleUpdate = () => {
     if (!validateHotelForm()) return;
     updateHotel.mutate({
-      name: form.name || undefined,
-      description: form.description || undefined,
-      address: form.address || undefined,
-      phone: form.phone || undefined,
-      email: form.email || undefined,
+      name: form.name.trim() || undefined,
+      description: form.description.trim() || undefined,
+      address: form.address.trim() || undefined,
+      phone: form.phone.trim() || undefined,
+      email: form.email.trim() || undefined,
       starRating: form.starRating,
+      countryCode: form.countryCode,
       wilayaCode: form.wilayaCode,
     });
   };
@@ -280,12 +291,12 @@ export default function Inventory() {
   const handleAddRoom = () => {
     if (!validateRoomForm()) return;
     const fullName = roomForm.roomType
-      ? `${roomForm.roomType} – ${roomForm.name}`
-      : roomForm.name;
+      ? `${roomForm.roomType} – ${roomForm.name.trim()}`
+      : roomForm.name.trim();
     upsertRoom.mutate({
       name: fullName,
-      totalCapacity: roomForm.totalCapacity,
-      b2bRate: parseFloat(roomForm.b2bRate),
+      totalCapacity: Number(roomForm.totalCapacity),
+      b2bRate: Number(roomForm.b2bRate),
     });
   };
 
@@ -360,7 +371,30 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Wilaya *</Label>
+                <Label>Country *</Label>
+                <Select
+                  value={form.countryCode}
+                  onValueChange={v => {
+                    const countryCode = v as "DZ" | "TN";
+                    setForm({ ...form, countryCode, wilayaCode: countryCode === "TN" ? 101 : 16 });
+                    setHotelErrors(p => ({ ...p, countryCode: undefined, wilayaCode: undefined }));
+                  }}
+                >
+                  <SelectTrigger className={hotelErrors.countryCode ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries?.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.nameFr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError msg={hotelErrors.countryCode} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{form.countryCode === "TN" ? "Governorate" : "Wilaya"} *</Label>
                 <Select
                   value={String(form.wilayaCode)}
                   onValueChange={v => {
@@ -373,7 +407,7 @@ export default function Inventory() {
                       hotelErrors.wilayaCode ? "border-destructive" : ""
                     }
                   >
-                    <SelectValue placeholder="Select wilaya" />
+                    <SelectValue placeholder={form.countryCode === "TN" ? "Select governorate" : "Select wilaya"} />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {wilayas?.map(w => (
@@ -449,6 +483,8 @@ export default function Inventory() {
     (sum, inv) => sum + Number(inv.commissionDue ?? 0),
     0
   );
+  const lowAvailabilityRooms = rooms.filter(room => Number(room.availableCount || 0) <= Math.max(1, Math.floor(Number(room.totalCapacity || 0) * 0.2))).length;
+  const unpublishedPhotos = photos.length === 0;
 
   return (
     <div>
@@ -488,7 +524,41 @@ export default function Inventory() {
         }
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-6">
+        {[
+          { href: "#profile", label: "Profile" },
+          { href: "#rooms", label: "Rooms" },
+          { href: "#availability", label: "Availability" },
+          { href: "#payments", label: "Payments" },
+          { href: "#finance", label: "Finance" },
+          { href: "#media", label: "Photos" },
+        ].map(item => (
+          <a
+            key={item.href}
+            href={item.href}
+            className="rounded-lg px-3 py-2 text-center text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+
+      {(lowAvailabilityRooms > 0 || unpublishedPhotos) ? (
+        <div className="mb-6 grid gap-3 lg:grid-cols-2">
+          {lowAvailabilityRooms > 0 ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span className="font-semibold">{lowAvailabilityRooms} room type{lowAvailabilityRooms > 1 ? "s" : ""}</span> need availability attention.
+            </div>
+          ) : null}
+          {unpublishedPhotos ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+              Add hotel photos to make the listing more credible for agencies.
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div id="availability" className="mb-6 grid gap-4 sm:grid-cols-4 scroll-mt-24">
         <StatCard
           label="Rooms"
           value={rooms.length}
@@ -506,9 +576,15 @@ export default function Inventory() {
           icon={<Plus className="h-5 w-5" />}
           tone="amber"
         />
+        <StatCard
+          label="Low stock"
+          value={lowAvailabilityRooms}
+          icon={<Minus className="h-5 w-5" />}
+          tone={lowAvailabilityRooms > 0 ? "amber" : "green"}
+        />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card mb-6">
+      <section id="profile" className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card mb-6">
         <div className="border-b border-border/60 px-5 py-4">
           <h3 className="font-semibold text-foreground">
             {editMode ? "Edit hotel profile" : "Hotel profile"}
@@ -547,15 +623,39 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Wilaya *</Label>
+                <Label>Country *</Label>
+                <Select
+                  value={form.countryCode}
+                  onValueChange={v => {
+                    const countryCode = v as "DZ" | "TN";
+                    setForm({ ...form, countryCode, wilayaCode: countryCode === "TN" ? 101 : 16 });
+                    setHotelErrors(p => ({ ...p, countryCode: undefined, wilayaCode: undefined }));
+                  }}
+                >
+                  <SelectTrigger className={hotelErrors.countryCode ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries?.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.nameFr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError msg={hotelErrors.countryCode} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{form.countryCode === "TN" ? "Governorate" : "Wilaya"} *</Label>
                 <Select
                   value={String(form.wilayaCode)}
-                  onValueChange={v =>
-                    setForm({ ...form, wilayaCode: parseInt(v, 10) })
-                  }
+                  onValueChange={v => {
+                    setForm({ ...form, wilayaCode: parseInt(v, 10) });
+                    setHotelErrors(p => ({ ...p, wilayaCode: undefined }));
+                  }}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select wilaya" />
+                  <SelectTrigger className={hotelErrors.wilayaCode ? "border-destructive" : ""}>
+                    <SelectValue placeholder={form.countryCode === "TN" ? "Select governorate" : "Select wilaya"} />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {wilayas?.map(w => (
@@ -565,6 +665,7 @@ export default function Inventory() {
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldError msg={hotelErrors.wilayaCode} />
               </div>
               <div className="space-y-1.5">
                 <Label>Address</Label>
@@ -636,10 +737,10 @@ export default function Inventory() {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Payment Settings */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card mb-6">
+      <section id="payments" className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card mb-6">
         <div className="border-b border-border/60 px-5 py-4">
           <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
             <CreditCard className="h-5 w-5" />
@@ -721,10 +822,10 @@ export default function Inventory() {
             {savingPayment ? "Saving..." : "Save Payment Settings"}
           </Button>
         </div>
-      </div>
+      </section>
 
       {/* Hotel Photos */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card mb-6">
+      <section id="media" className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card mb-6">
         <div className="border-b border-border/60 px-5 py-4">
           <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
             <Image className="h-5 w-5" />
@@ -840,9 +941,10 @@ export default function Inventory() {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
       {/* Room Management */}
+      <section id="rooms" className="scroll-mt-24">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold">{t("hotel.rooms")}</h2>
@@ -903,13 +1005,21 @@ export default function Inventory() {
                   type="number"
                   min={1}
                   value={roomForm.totalCapacity}
-                  onChange={e =>
+                  onChange={e => {
                     setRoomForm({
                       ...roomForm,
-                      totalCapacity: parseInt(e.target.value, 10) || 1,
-                    })
-                  }
+                      totalCapacity: e.target.value,
+                    });
+                    setRoomErrors(p => ({ ...p, totalCapacity: undefined }));
+                  }}
+                  onBlur={e => {
+                    if (!Number.isInteger(Number(e.target.value)) || Number(e.target.value) < 1) {
+                      setRoomForm({ ...roomForm, totalCapacity: "1" });
+                    }
+                  }}
+                  className={roomErrors.totalCapacity ? "border-destructive" : ""}
                 />
+                <FieldError msg={roomErrors.totalCapacity} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">{t("hotel.rate")} *</Label>
@@ -1065,9 +1175,10 @@ export default function Inventory() {
           }
         />
       )}
+      </section>
 
       {/* Commission Ledger */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card mt-8">
+      <section id="finance" className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card mt-8">
         <div className="border-b border-border/60 px-5 py-4">
           <div>
             <h3 className="font-semibold text-foreground flex items-center gap-2 text-base">
@@ -1163,7 +1274,7 @@ export default function Inventory() {
             </>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

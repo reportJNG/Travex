@@ -38,11 +38,25 @@ create type claim_status   as enum ('pending', 'approved', 'rejected');
 
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- 3. REFERENCE TABLES (wilayas, amenities, platform settings)
+-- 3. REFERENCE TABLES (countries, regions, amenities, platform settings)
 -- ═══════════════════════════════════════════════════════════════════════════════
+
+create table countries (
+  code           text primary key check (code ~ '^[A-Z]{2}$'),
+  iso3           text unique not null check (iso3 ~ '^[A-Z]{3}$'),
+  name_fr        text not null,
+  name_ar        text not null,
+  name_en        text not null,
+  currency_code  text not null check (currency_code ~ '^[A-Z]{3}$'),
+  phone_prefix   text not null,
+  default_locale text not null default 'fr' check (default_locale in ('ar','fr','en')),
+  is_active      boolean not null default true
+);
 
 create table wilayas (
   code    int primary key,
+  country_code text not null default 'DZ' references countries(code),
+  region_type  text not null default 'wilaya',
   name_fr text not null,
   name_ar text not null,
   name_en text not null,
@@ -75,6 +89,7 @@ create table profiles (
   legal_name       text not null,
   email            text not null,
   phone            text not null,
+  country_code     text not null default 'DZ' references countries(code),
   wilaya_code      int references wilayas(code),
   tax_id           text,
   license_number   text,
@@ -108,6 +123,7 @@ create table hotels (
   is_active                    boolean not null default true,
   name                         text not null,
   description                  text,
+  country_code                 text not null default 'DZ' references countries(code),
   wilaya_code                  int not null references wilayas(code),
   address                      text,
   star_rating                  int check (star_rating between 1 and 5),
@@ -303,6 +319,8 @@ create index idx_bookings_checkout      on bookings (status, check_out);
 create index idx_bookings_uninvoiced    on bookings (invoice_id) where invoice_id is null;
 create index idx_rooms_hotel_active     on room_types (hotel_id) where is_active;
 create index idx_hotels_wilaya_active   on hotels (wilaya_code) where is_active;
+create index idx_hotels_country_active  on hotels (country_code) where is_active;
+create index idx_wilayas_country        on wilayas (country_code, code);
 create index idx_hotels_name_trgm       on hotels using gin (name gin_trgm_ops);
 create index idx_notif_user_created     on notifications (user_id, created_at desc);
 create index idx_notif_unread           on notifications (user_id) where read_at is null;
@@ -396,13 +414,15 @@ alter table invoice_items      enable row level security;
 alter table hotel_claims       enable row level security;
 alter table notifications      enable row level security;
 alter table audit_logs         enable row level security;
+alter table countries          enable row level security;
 alter table wilayas            enable row level security;
 alter table amenities          enable row level security;
 alter table platform_settings  enable row level security;
 
--- ── Reference data: any authenticated user can read ─────────────────────────
-create policy "wilayas_read"   on wilayas            for select to authenticated using (true);
-create policy "amenities_read" on amenities           for select to authenticated using (true);
+-- ── Reference data: public forms and authenticated users can read ───────────
+create policy "countries_read" on countries          for select to anon, authenticated using (true);
+create policy "wilayas_read"   on wilayas            for select to anon, authenticated using (true);
+create policy "amenities_read" on amenities           for select to anon, authenticated using (true);
 create policy "settings_read"  on platform_settings   for select to authenticated using (true);
 create policy "settings_admin" on platform_settings   for all    to authenticated
   using (is_admin()) with check (is_admin());
@@ -1200,6 +1220,7 @@ returns table (
   full_name       text,
   email           text,
   phone           text,
+  country_code    text,
   wilaya_code     int,
   license_number  text,
   created_at      timestamptz,
@@ -1209,7 +1230,7 @@ returns table (
 language sql stable security definer set search_path = public, auth as $$
   select
     p.id, p.role, p.status, p.legal_name, p.full_name, p.email, p.phone,
-    p.wilaya_code, p.license_number, p.created_at,
+    p.country_code, p.wilaya_code, p.license_number, p.created_at,
     u.email_confirmed_at is not null,
     (u.raw_app_meta_data->'providers') ? 'google'
   from profiles p
@@ -1262,6 +1283,20 @@ insert into amenities (key, lucide_icon, label) values
   ('beach',         'TreePalm',          '{"ar":"شاطئ","fr":"Plage","en":"Beach access"}'),
   ('shuttle',       'Bus',               '{"ar":"نقل المطار","fr":"Navette aéroport","en":"Airport shuttle"}')
 on conflict do nothing;
+
+insert into countries (code, iso3, name_fr, name_ar, name_en, currency_code, phone_prefix, default_locale, is_active) values
+  ('DZ', 'DZA', 'Algérie', 'الجزائر', 'Algeria', 'DZD', '+213', 'fr', true),
+  ('TN', 'TUN', 'Tunisie', 'تونس', 'Tunisia', 'TND', '+216', 'fr', true),
+  ('MA', 'MAR', 'Maroc', 'المغرب', 'Morocco', 'MAD', '+212', 'fr', false)
+on conflict (code) do update set
+  iso3 = excluded.iso3,
+  name_fr = excluded.name_fr,
+  name_ar = excluded.name_ar,
+  name_en = excluded.name_en,
+  currency_code = excluded.currency_code,
+  phone_prefix = excluded.phone_prefix,
+  default_locale = excluded.default_locale,
+  is_active = excluded.is_active;
 
 -- All 58 wilayas of Algeria
 insert into wilayas (code, name_fr, name_ar, name_en, lat, lng) values
@@ -1324,6 +1359,45 @@ insert into wilayas (code, name_fr, name_ar, name_en, lat, lng) values
   (57, 'In Salah',         'عين صالح',         'In Salah',          27.1939,   2.4675),
   (58, 'In Guezzam',       'عين قزام',         'In Guezzam',        19.5667,   5.7667)
 on conflict do nothing;
+
+update wilayas
+set country_code = 'DZ',
+    region_type = 'wilaya'
+where code between 1 and 58;
+
+insert into wilayas (code, country_code, region_type, name_fr, name_ar, name_en, lat, lng) values
+  (101, 'TN', 'governorate', 'Tunis',       'تونس',      'Tunis',       36.8065, 10.1815),
+  (102, 'TN', 'governorate', 'Ariana',      'أريانة',    'Ariana',      36.8625, 10.1956),
+  (103, 'TN', 'governorate', 'Ben Arous',   'بن عروس',   'Ben Arous',   36.7531, 10.2189),
+  (104, 'TN', 'governorate', 'Manouba',     'منوبة',     'Manouba',     36.8101, 10.0956),
+  (105, 'TN', 'governorate', 'Nabeul',      'نابل',      'Nabeul',      36.4513, 10.7350),
+  (106, 'TN', 'governorate', 'Zaghouan',    'زغوان',     'Zaghouan',    36.4029, 10.1429),
+  (107, 'TN', 'governorate', 'Bizerte',     'بنزرت',     'Bizerte',     37.2744,  9.8739),
+  (108, 'TN', 'governorate', 'Béja',        'باجة',      'Beja',        36.7256,  9.1817),
+  (109, 'TN', 'governorate', 'Jendouba',    'جندوبة',    'Jendouba',    36.5011,  8.7802),
+  (110, 'TN', 'governorate', 'Kef',         'الكاف',     'Kef',         36.1822,  8.7148),
+  (111, 'TN', 'governorate', 'Siliana',     'سليانة',    'Siliana',     36.0840,  9.3708),
+  (112, 'TN', 'governorate', 'Sousse',      'سوسة',      'Sousse',      35.8256, 10.6369),
+  (113, 'TN', 'governorate', 'Monastir',    'المنستير',  'Monastir',    35.7643, 10.8113),
+  (114, 'TN', 'governorate', 'Mahdia',      'المهدية',   'Mahdia',      35.5047, 11.0622),
+  (115, 'TN', 'governorate', 'Sfax',        'صفاقس',     'Sfax',        34.7406, 10.7603),
+  (116, 'TN', 'governorate', 'Kairouan',    'القيروان',  'Kairouan',    35.6781, 10.0963),
+  (117, 'TN', 'governorate', 'Kasserine',   'القصرين',   'Kasserine',   35.1676,  8.8365),
+  (118, 'TN', 'governorate', 'Sidi Bouzid', 'سيدي بوزيد','Sidi Bouzid', 35.0382,  9.4858),
+  (119, 'TN', 'governorate', 'Gabès',       'قابس',      'Gabes',       33.8815, 10.0982),
+  (120, 'TN', 'governorate', 'Médenine',    'مدنين',     'Medenine',    33.3549, 10.5055),
+  (121, 'TN', 'governorate', 'Tataouine',   'تطاوين',    'Tataouine',   32.9297, 10.4518),
+  (122, 'TN', 'governorate', 'Gafsa',       'قفصة',      'Gafsa',       34.4250,  8.7842),
+  (123, 'TN', 'governorate', 'Tozeur',      'توزر',      'Tozeur',      33.9197,  8.1335),
+  (124, 'TN', 'governorate', 'Kébili',      'قبلي',      'Kebili',      33.7050,  8.9650)
+on conflict (code) do update set
+  country_code = excluded.country_code,
+  region_type = excluded.region_type,
+  name_fr = excluded.name_fr,
+  name_ar = excluded.name_ar,
+  name_en = excluded.name_en,
+  lat = excluded.lat,
+  lng = excluded.lng;
 
 
 -- ═══════════════════════════════════════════════════════════════════════════════

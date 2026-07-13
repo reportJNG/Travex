@@ -13,6 +13,7 @@ import {
   invoiceItems,
   hotelClaims,
   notifications,
+  countries,
   wilayas,
   amenities,
 } from "./schema";
@@ -33,6 +34,10 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
     fields: [profiles.wilayaCode],
     references: [wilayas.code],
   }),
+  country: one(countries, {
+    fields: [profiles.countryCode],
+    references: [countries.code],
+  }),
   documents: many(businessDocuments),
   bookingsAsAgency: many(bookings, { relationName: "agencyBookings" }),
   hotel: one(hotels, {
@@ -49,7 +54,17 @@ export const businessDocumentsRelations = relations(businessDocuments, ({ one })
   }),
 }));
 
-export const wilayasRelations = relations(wilayas, ({ many }) => ({
+export const countriesRelations = relations(countries, ({ many }) => ({
+  regions: many(wilayas),
+  profiles: many(profiles),
+  hotels: many(hotels),
+}));
+
+export const wilayasRelations = relations(wilayas, ({ one, many }) => ({
+  country: one(countries, {
+    fields: [wilayas.countryCode],
+    references: [countries.code],
+  }),
   profiles: many(profiles),
   hotels: many(hotels),
 }));
@@ -66,6 +81,10 @@ export const hotelsRelations = relations(hotels, ({ one, many }) => ({
   wilaya: one(wilayas, {
     fields: [hotels.wilayaCode],
     references: [wilayas.code],
+  }),
+  country: one(countries, {
+    fields: [hotels.countryCode],
+    references: [countries.code],
   }),
   photos: many(hotelPhotos),
   amenities: many(hotelAmenities),

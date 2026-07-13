@@ -33,8 +33,8 @@ const totalSteps = 5;
 
 const step2Schema = z
   .object({
-    fullName: z.string().min(3, "Le nom complet doit comporter au moins 3 caractères"),
-    email: z.string().email("Entrez une adresse e-mail valide"),
+    fullName: z.string().trim().min(3, "Le nom complet doit comporter au moins 3 caractères"),
+    email: z.string().trim().email("Entrez une adresse e-mail valide"),
     password: z.string().min(8, "Le mot de passe doit comporter au moins 8 caractères"),
     confirmPassword: z.string(),
   })
@@ -44,10 +44,14 @@ const step2Schema = z
   });
 
 const step3Schema = z.object({
-  legalName: z.string().min(2, "Le nom légal doit comporter au moins 2 caractères"),
-  phone: z.string().min(8, "Entrez un numéro de téléphone valide"),
+  legalName: z.string().trim().min(2, "Le nom légal doit comporter au moins 2 caractères"),
+  phone: z.string().trim().min(8, "Entrez un numéro de téléphone valide"),
+  country: z.string().min(1, "Veuillez sélectionner un pays"),
   wilaya: z.string().min(1, "Veuillez sélectionner une wilaya"),
 });
+
+const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024;
+const ACCEPTED_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 
 type FieldErrors = Record<string, string>;
 
@@ -80,6 +84,7 @@ export default function Register() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [legalName, setLegalName] = useState("");
   const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState<"DZ" | "TN">("DZ");
   const [wilaya, setWilaya] = useState("");
   const [taxId, setTaxId] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -92,7 +97,8 @@ export default function Register() {
   const tourismLicenseRef = useRef<HTMLInputElement>(null);
   const taxCardRef = useRef<HTMLInputElement>(null);
 
-  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery();
+  const { data: countries } = trpc.marketplace.listCountries.useQuery();
+  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery({ country });
 
   const registerMutation = trpc.auth.register.useMutation({
     onSuccess: () => navigate("/register/submitted"),
@@ -100,7 +106,9 @@ export default function Register() {
       if (err.message === "EMAIL_EXISTS")
         setError("Cet e-mail est déjà enregistré. Veuillez vous connecter.");
       else if (err.message === "PHONE_INVALID")
-        setError("Numéro de téléphone invalide. Format : +213XXXXXXXXX");
+        setError(country === "TN" ? "Numéro de téléphone invalide. Format : +216XXXXXXXX" : "Numéro de téléphone invalide. Format : +213XXXXXXXXX");
+      else if (err.message === "REGION_INVALID")
+        setError("La région sélectionnée ne correspond pas au pays choisi.");
       else if (err.message === "TAX_OR_LICENSE_REQUIRED")
         setError("Les comptes hôtel doivent fournir un NIF ou un numéro d'agrément.");
       else setError(err.message || "Inscription échouée. Réessayez.");
@@ -127,7 +135,7 @@ export default function Register() {
       }
     }
     if (current === 3) {
-      const result = step3Schema.safeParse({ legalName, phone, wilaya });
+      const result = step3Schema.safeParse({ legalName, phone, country, wilaya });
       if (!result.success) {
         const errors: FieldErrors = {};
         for (const issue of result.error.issues) {
@@ -137,7 +145,7 @@ export default function Register() {
         setFieldErrors(errors);
         return false;
       }
-      if (role === "hotel" && !taxId && !licenseNumber) {
+      if (role === "hotel" && !taxId.trim() && !licenseNumber.trim()) {
         setError("Les comptes hôtel doivent fournir un NIF ou un numéro d'agrément");
         return false;
       }
@@ -168,19 +176,22 @@ export default function Register() {
     }
     registerMutation.mutate({
       role,
-      fullName,
-      legalName,
-      email,
+      fullName: fullName.trim(),
+      legalName: legalName.trim(),
+      email: email.trim(),
       password,
-      phone,
+      phone: phone.trim(),
+      country,
       wilaya: parseInt(wilaya) || 1,
-      taxId: taxId || undefined,
-      licenseNumber: licenseNumber || undefined,
+      taxId: taxId.trim() || undefined,
+      licenseNumber: licenseNumber.trim() || undefined,
       locale: "fr",
     });
   };
 
+  const selectedCountryName = countries?.find(c => c.code === country)?.nameFr;
   const selectedWilayaName = wilayas?.find(w => String(w.code) === wilaya)?.nameFr;
+  const regionLabel = country === "TN" ? "Gouvernorat" : "Wilaya";
 
   return (
     <div className="grid min-h-[calc(100vh-12rem)] overflow-hidden rounded-2xl border border-border bg-card shadow-sm lg:grid-cols-[0.9fr_1.1fr]">
@@ -463,21 +474,46 @@ export default function Register() {
                   id="phone"
                   value={phone}
                   onChange={e => { setPhone(e.target.value); clearErrors(); }}
-                  placeholder="+213 5XX XXX XXX"
+                  placeholder={country === "TN" ? "+216 XX XXX XXX" : "+213 5XX XXX XXX"}
                   className={cn("h-10", fieldErrors.phone && "border-destructive")}
                 />
                 <FieldError message={fieldErrors.phone} />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Wilaya *
+                  Pays *
+                </Label>
+                <Select
+                  value={country}
+                  onValueChange={v => {
+                    setCountry(v as "DZ" | "TN");
+                    setWilaya("");
+                    clearErrors();
+                  }}
+                >
+                  <SelectTrigger className={cn("h-10", fieldErrors.country && "border-destructive")}>
+                    <SelectValue placeholder="Sélectionner un pays" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries?.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.nameFr}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError message={fieldErrors.country} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {regionLabel} *
                 </Label>
                 <Select
                   value={wilaya}
                   onValueChange={v => { setWilaya(v); clearErrors(); }}
                 >
                   <SelectTrigger className={cn("h-10", fieldErrors.wilaya && "border-destructive")}>
-                    <SelectValue placeholder="Sélectionner une wilaya" />
+                    <SelectValue placeholder={`Sélectionner ${country === "TN" ? "un gouvernorat" : "une wilaya"}`} />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
                     {wilayas?.map(w => (
@@ -625,7 +661,19 @@ export default function Register() {
                     className="hidden"
                     onChange={e => {
                       const f = e.target.files?.[0];
-                      if (f) item.set(f);
+                      if (!f) return;
+                      if (!ACCEPTED_DOCUMENT_TYPES.includes(f.type)) {
+                        setError("Format de document invalide. Utilisez PDF, JPG, PNG ou WEBP.");
+                        e.target.value = "";
+                        return;
+                      }
+                      if (f.size > MAX_DOCUMENT_SIZE) {
+                        setError("Le document ne doit pas dépasser 5 Mo.");
+                        e.target.value = "";
+                        return;
+                      }
+                      clearErrors();
+                      item.set(f);
                     }}
                   />
                 </div>
@@ -656,7 +704,8 @@ export default function Register() {
                       ["E-mail", email],
                       ["Nom légal", legalName],
                       ["Téléphone", phone],
-                      ["Wilaya", selectedWilayaName ? `${wilaya} – ${selectedWilayaName}` : wilaya || "—"],
+                      ["Pays", selectedCountryName || country],
+                      [regionLabel, selectedWilayaName ? `${wilaya} – ${selectedWilayaName}` : wilaya || "—"],
                       ...(taxId ? [["NIF fiscal", taxId]] : []),
                       ...(licenseNumber ? [["Agrément", licenseNumber]] : []),
                       ["Registre de Commerce", commercialRegistry ? commercialRegistry.name : "—"],

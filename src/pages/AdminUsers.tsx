@@ -90,7 +90,7 @@ export default function AdminUsers() {
         </Button>
       );
     }
-    return <span className="text-xs text-muted-foreground">No action</span>;
+    return <span className="text-xs text-muted-foreground">Aucune action</span>;
   };
 
   return (
@@ -98,7 +98,7 @@ export default function AdminUsers() {
       <PageHeader
         eyebrow="Administration"
         title={t("admin.users")}
-        description="Search accounts, review roles, and manage access without breaking the marketplace flow."
+        description="Recherchez les comptes, vérifiez les rôles et gérez les accès sans interrompre le marketplace."
       />
 
       <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card">
@@ -119,7 +119,7 @@ export default function AdminUsers() {
             <SelectContent>
               {roleOptions.map((role) => (
                 <SelectItem key={role} value={role} className="capitalize">
-                  {role === "all" ? "All roles" : role.replace("_", " ")}
+                  {role === "all" ? "Tous les rôles" : role.replace("_", " ")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -203,7 +203,7 @@ export default function AdminUsers() {
             </>
           ) : (
             <div className="p-6">
-              <EmptyState icon={<Users className="h-6 w-6" />} title="No users found" description="Try a different search or role filter." />
+              <EmptyState icon={<Users className="h-6 w-6" />} title="Aucun utilisateur" description="Essayez une autre recherche ou un autre filtre de rôle." />
             </div>
           )}
         </div>

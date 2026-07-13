@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import {
   AlertCircle,
@@ -15,35 +14,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 type ResultState = "processing" | "confirmed" | "failed" | "cancelled" | "refund_required";
 
+function getResultState(paymentStatus: string | null, booking?: any): ResultState {
+  if (paymentStatus === "success" || booking?.status === "confirmed" || booking?.status === "completed") {
+    return "confirmed";
+  }
+  if (paymentStatus === "failed" || booking?.status === "rejected") {
+    return "failed";
+  }
+  if (paymentStatus === "cancelled" || booking?.status === "cancelled") {
+    return "cancelled";
+  }
+  if (booking?.paymentStatus === "refund_required") {
+    return "refund_required";
+  }
+  return "processing";
+}
+
 export default function PaymentResult() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const bookingId = id || "";
 
   const paymentStatus = searchParams.get("status");
-  const [resultState, setResultState] = useState<ResultState>("processing");
 
   const { data: booking, isLoading } = trpc.booking.get.useQuery(
     { bookingId },
     {
       enabled: !!bookingId,
-      refetchInterval: resultState === "processing" ? 3000 : false,
+      refetchInterval: (query) => getResultState(paymentStatus, query.state.data) === "processing" ? 3000 : false,
     }
   );
-
-  useEffect(() => {
-    if (paymentStatus === "success" || booking?.status === "confirmed") {
-      setResultState("confirmed");
-    } else if (paymentStatus === "failed" || booking?.status === "rejected") {
-      setResultState("failed");
-    } else if (paymentStatus === "cancelled" || booking?.status === "cancelled") {
-      setResultState("cancelled");
-    } else if (booking?.paymentStatus === "refund_required") {
-      setResultState("refund_required");
-    } else if (booking?.status === "confirmed" || booking?.status === "completed") {
-      setResultState("confirmed");
-    }
-  }, [paymentStatus, booking]);
+  const resultState = getResultState(paymentStatus, booking);
 
   if (isLoading) {
     return (
@@ -61,9 +62,9 @@ export default function PaymentResult() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Payment"
-        title="Payment result"
-        description={`Booking reference: ${reference}`}
+        eyebrow="Paiement"
+        title="Résultat du paiement"
+        description={`Référence réservation : ${reference}`}
       />
 
       <div className="flex justify-center">
@@ -74,10 +75,10 @@ export default function PaymentResult() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
                   <Clock className="h-8 w-8 text-amber-600 animate-pulse" />
                 </div>
-                <h2 className="text-xl font-semibold">Processing payment</h2>
+                <h2 className="text-xl font-semibold">Paiement en cours</h2>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Your payment is being verified. This may take a moment.
-                  Please do not close this page.
+                  Votre paiement est en vérification. Cette étape peut prendre quelques instants.
+                  Gardez cette page ouverte.
                 </p>
                 <div className="mt-6 flex justify-center">
                   <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -88,18 +89,18 @@ export default function PaymentResult() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
                   <CheckCircle className="h-8 w-8 text-emerald-600" />
                 </div>
-                <h2 className="text-xl font-semibold">Payment confirmed</h2>
+                <h2 className="text-xl font-semibold">Paiement confirmé</h2>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Your booking at <strong>{hotel.name || "the hotel"}</strong> has
-                  been confirmed. You will receive a confirmation notification shortly.
+                  Votre réservation chez <strong>{hotel.name || "l'hôtel"}</strong> est confirmée.
+                  Une notification de confirmation sera envoyée.
                 </p>
                 <div className="mt-4 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
                   <div className="flex justify-between gap-3">
-                    <span className="text-muted-foreground">Reference</span>
+                    <span className="text-muted-foreground">Référence</span>
                     <span className="font-mono font-medium">{reference}</span>
                   </div>
                   <div className="mt-2 flex justify-between gap-3">
-                    <span className="text-muted-foreground">Total paid</span>
+                    <span className="text-muted-foreground">Total payé</span>
                     <span className="font-semibold text-primary">
                       {totalPrice.toLocaleString("fr-DZ")} DZD
                     </span>
@@ -108,11 +109,11 @@ export default function PaymentResult() {
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                   <Button asChild>
                     <Link to={`/booking/${bookingId}/confirmation`}>
-                      View confirmation
+                      Voir la confirmation
                     </Link>
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link to="/dashboard">Dashboard</Link>
+                    <Link to="/dashboard">Tableau de bord</Link>
                   </Button>
                 </div>
               </>
@@ -121,26 +122,24 @@ export default function PaymentResult() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-rose-100">
                   <XCircle className="h-8 w-8 text-rose-600" />
                 </div>
-                <h2 className="text-xl font-semibold">Payment failed</h2>
+                <h2 className="text-xl font-semibold">Paiement refusé</h2>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Your payment could not be processed. No amount has been
-                  charged. You may try again or choose a different payment
-                  method.
+                  Le paiement n'a pas pu être traité. Aucun montant n'a été débité.
+                  Vous pouvez réessayer ou choisir un autre mode de paiement.
                 </p>
                 <Alert variant="destructive" className="mt-4 text-left">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>What to do next</AlertTitle>
+                  <AlertTitle>Prochaine étape</AlertTitle>
                   <AlertDescription>
-                    Check your card details and try again, or select offline
-                    payment to proceed with a bank transfer.
+                    Vérifiez les informations de paiement ou choisissez le paiement hors ligne par virement.
                   </AlertDescription>
                 </Alert>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                   <Button asChild>
-                    <Link to="/dashboard">Try again from dashboard</Link>
+                    <Link to="/dashboard">Réessayer depuis le tableau de bord</Link>
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link to="/marketplace">Browse hotels</Link>
+                    <Link to="/marketplace">Parcourir les hôtels</Link>
                   </Button>
                 </div>
               </>
@@ -149,17 +148,17 @@ export default function PaymentResult() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100">
                   <XCircle className="h-8 w-8 text-slate-500" />
                 </div>
-                <h2 className="text-xl font-semibold">Payment cancelled</h2>
+                <h2 className="text-xl font-semibold">Paiement annulé</h2>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  You cancelled the payment. The booking hold has been
-                  released. You can return to the hotel and try again.
+                  Le paiement a été annulé. Le blocage temporaire de la réservation a été libéré.
+                  Vous pouvez relancer une réservation.
                 </p>
                 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                   <Button asChild>
-                    <Link to="/dashboard">Go to dashboard</Link>
+                    <Link to="/dashboard">Tableau de bord</Link>
                   </Button>
                   <Button variant="outline" asChild>
-                    <Link to="/marketplace">Browse hotels</Link>
+                    <Link to="/marketplace">Parcourir les hôtels</Link>
                   </Button>
                 </div>
               </>
@@ -168,15 +167,14 @@ export default function PaymentResult() {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
                   <AlertTriangle className="h-8 w-8 text-orange-600" />
                 </div>
-                <h2 className="text-xl font-semibold">Refund in progress</h2>
+                <h2 className="text-xl font-semibold">Remboursement en cours</h2>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Your payment was received but the room is no longer available.
-                  A full refund is being processed and will be returned to your
-                  original payment method within 5–7 business days.
+                  Le paiement a été reçu mais la chambre n'est plus disponible.
+                  Un remboursement complet est en cours et sera retourné sous 5 à 7 jours ouvrés.
                 </p>
                 <Alert className="mt-4 border-orange-300 bg-orange-50 text-left text-orange-900">
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  <AlertTitle>Support reference: {reference}</AlertTitle>
+                  <AlertTitle>Référence support : {reference}</AlertTitle>
                   <AlertDescription>
                     Contact us at{" "}
                     <a
@@ -185,11 +183,11 @@ export default function PaymentResult() {
                     >
                       contact@nexelite.co
                     </a>{" "}
-                    if you have not received your refund within 7 days.
+                    si le remboursement n'apparaît pas après 7 jours.
                   </AlertDescription>
                 </Alert>
                 <Button className="mt-6" asChild>
-                  <Link to="/dashboard">Dashboard</Link>
+                  <Link to="/dashboard">Tableau de bord</Link>
                 </Button>
               </>
             ) : null}

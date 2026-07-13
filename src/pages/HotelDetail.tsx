@@ -47,17 +47,27 @@ const AMENITY_ICON_MAP: Record<string, React.ReactNode> = {
   beach: <TreePalm className="h-4 w-4" />,
 };
 
+const dateString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date");
+
 const bookingSchema = z.object({
   selectedRoom: z.string().min(1, "Please select a room"),
-  checkIn: z.string().min(1, "Check-in date is required"),
-  checkOut: z.string().min(1, "Check-out date is required"),
+  checkIn: dateString.min(1, "Check-in date is required"),
+  checkOut: dateString.min(1, "Check-out date is required"),
   roomsCount: z.number().int().min(1).max(20),
 }).refine((d) => {
   if (!d.checkIn || !d.checkOut) return true;
   return new Date(d.checkOut) > new Date(d.checkIn);
 }, { message: "Check-out must be after check-in", path: ["checkOut"] });
 
-type BookingErrors = { selectedRoom?: string; checkIn?: string; checkOut?: string };
+type BookingErrors = { selectedRoom?: string; checkIn?: string; checkOut?: string; roomsCount?: string };
+
+function parseRoomsCount(value: string) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return 1;
+  return Math.min(20, Math.max(1, parsed));
+}
 
 function Stars({ count }: { count?: number | null }) {
   if (!count) return null;
@@ -94,19 +104,20 @@ export default function HotelDetail() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
-  const [roomsCount, setRoomsCount] = useState(1);
+  const [roomsCount, setRoomsCount] = useState("1");
   const [paymentMethod, setPaymentMethod] = useState<"cib" | "edahabia" | "offline">("offline");
   const [bookingErrors, setBookingErrors] = useState<BookingErrors>({});
 
   const rooms = (hotel?.rooms || []) as Array<Record<string, unknown>>;
   const activeRooms = rooms.filter((r) => r.isActive !== false);
   const selectedRoomData = activeRooms.find((room) => room.id === selectedRoom);
+  const parsedRoomsCount = parseRoomsCount(roomsCount);
   const nights =
     checkIn && checkOut
       ? Math.max(0, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000))
       : 0;
   const totalEstimate =
-    selectedRoomData && nights > 0 ? Number(selectedRoomData.b2bRate) * nights * roomsCount : 0;
+    selectedRoomData && nights > 0 ? Number(selectedRoomData.b2bRate) * nights * parsedRoomsCount : 0;
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
@@ -120,7 +131,7 @@ export default function HotelDetail() {
       selectedRoom: selectedRoom || "",
       checkIn,
       checkOut,
-      roomsCount,
+      roomsCount: Number(roomsCount),
     });
 
     if (!result.success) {
@@ -141,7 +152,7 @@ export default function HotelDetail() {
       roomTypeId: selectedRoom!,
       checkIn,
       checkOut,
-      roomsCount,
+      roomsCount: parsedRoomsCount,
       paymentMethod,
     });
   };
@@ -173,7 +184,8 @@ export default function HotelDetail() {
   const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr?: string } }>;
   const isSeeded = hotel.isSeeded as boolean;
   const wilaya = hotel.wilaya as { nameFr?: string } | undefined;
-  const wilayaName = wilaya?.nameFr || "Algeria";
+  const country = hotel.country as { nameFr?: string } | undefined;
+  const wilayaName = [wilaya?.nameFr, country?.nameFr].filter(Boolean).join(", ") || "North Africa";
   const contacts: Array<{ present: unknown; href: string; icon: LucideIcon; label: string }> = [
     { present: hotel.phone, href: `tel:${hotel.phone}`, icon: Phone, label: String(hotel.phone || "") },
     { present: hotel.email, href: `mailto:${hotel.email}`, icon: Mail, label: String(hotel.email || "") },
@@ -230,8 +242,14 @@ export default function HotelDetail() {
             min={1}
             max={20}
             value={roomsCount}
-            onChange={(e) => setRoomsCount(parseInt(e.target.value) || 1)}
+            onChange={(e) => {
+              setRoomsCount(e.target.value);
+              setBookingErrors((prev) => ({ ...prev, roomsCount: undefined }));
+            }}
+            onBlur={(e) => setRoomsCount(String(parseRoomsCount(e.target.value)))}
+            className={bookingErrors.roomsCount ? "border-destructive" : ""}
           />
+          {bookingErrors.roomsCount ? <p className="text-xs text-destructive">{bookingErrors.roomsCount}</p> : null}
         </div>
 
         <div className="space-y-2">
@@ -265,7 +283,7 @@ export default function HotelDetail() {
         {nights > 0 && selectedRoomData ? (
           <div className="rounded-xl border bg-muted/40 p-3 text-sm">
             <div className="flex justify-between gap-3 text-muted-foreground">
-              <span>{Number(selectedRoomData.b2bRate).toLocaleString()} × {nights} nights × {roomsCount} rooms</span>
+              <span>{Number(selectedRoomData.b2bRate).toLocaleString()} × {nights} nights × {parsedRoomsCount} rooms</span>
             </div>
             <Separator className="my-2" />
             <div className="flex justify-between gap-3 font-semibold">
@@ -459,7 +477,7 @@ export default function HotelDetail() {
                 {totalEstimate ? `${totalEstimate.toLocaleString()} DZD` : selectedRoom ? "Select dates" : "Select a room"}
               </div>
               <div className="text-xs text-muted-foreground">
-                {nights > 0 ? `${nights} nights · ${roomsCount} room${roomsCount > 1 ? "s" : ""}` : "Choose dates"}
+                {nights > 0 ? `${nights} nights · ${parsedRoomsCount} room${parsedRoomsCount > 1 ? "s" : ""}` : "Choose dates"}
               </div>
             </div>
             <Button

@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/app/StateBlock";
 import { PageHeader } from "@/components/app/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";

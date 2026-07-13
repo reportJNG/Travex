@@ -7,7 +7,9 @@ import {
   BadgeCheck,
   CalendarCheck,
   Clock,
+  CreditCard,
   Receipt,
+  Search,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,6 +60,12 @@ export default function Dashboard() {
   };
 
   const awaitingPaymentBookings = bookings?.filter(b => b.status === "awaiting_offline_payment") ?? [];
+  const activeBookings = bookings?.filter(b => ["pending_hotel", "pending_payment", "awaiting_offline_payment", "confirmed"].includes(b.status)) ?? [];
+  const totalVolume = bookings?.reduce((sum, booking) => sum + Number(booking.totalPrice || 0), 0) ?? 0;
+  const nextDeadline = awaitingPaymentBookings
+    .map(booking => booking.paymentDeadline)
+    .filter(Boolean)
+    .sort()[0];
   const filtered = activeTab === "all" ? bookings : bookings?.filter(b => b.status === activeTab);
 
   function openReceiptSheet(bookingId?: string) {
@@ -68,16 +76,24 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader
-        eyebrow="Agence"
-        title={t("dashboard.title")}
-        description="Suivez le statut des réservations, les actions de paiement et les demandes archivées."
+        eyebrow="Agence workspace"
+        title="Opérations de réservation"
+        description="Pilotez vos réservations B2B, les délais de paiement et les confirmations hôtel depuis un seul tableau de bord."
         actions={
-          <Button asChild className="gap-2">
-            <Link to="/marketplace">
-              <ArrowUpRight className="h-4 w-4" />
-              Parcourir la marketplace
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild className="gap-2">
+              <Link to="/marketplace">
+                <Search className="h-4 w-4" />
+                Nouvelle recherche
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="gap-2">
+              <Link to="/invoices">
+                <ArrowUpRight className="h-4 w-4" />
+                Relevés
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -104,7 +120,7 @@ export default function Dashboard() {
       )}
 
       {/* Stats */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label={t("dashboard.totalBookings")}
           value={counts.total}
@@ -122,6 +138,59 @@ export default function Dashboard() {
           icon={<BadgeCheck className="h-5 w-5" />}
           tone="green"
         />
+        <StatCard
+          label="Volume réservé"
+          value={`${(totalVolume / 1000).toFixed(0)}K DZD`}
+          icon={<CreditCard className="h-5 w-5" />}
+          tone="blue"
+        />
+      </div>
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">File active</p>
+              <h2 className="mt-1 text-lg font-semibold text-foreground">{activeBookings.length} réservations à suivre</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Priorisez les paiements offline et les demandes encore en attente côté hôtel.
+              </p>
+            </div>
+            <Button variant="outline" asChild>
+              <Link to="/marketplace">Ajouter une réservation</Link>
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Hôtel à répondre", value: bookings?.filter(b => b.status === "pending_hotel").length ?? 0 },
+              { label: "Paiement à envoyer", value: awaitingPaymentBookings.length },
+              { label: "Confirmées actives", value: bookings?.filter(b => b.status === "confirmed").length ?? 0 },
+            ].map(item => (
+              <div key={item.label} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <div className="text-lg font-bold tabular-nums">{item.value}</div>
+                <div className="text-xs text-muted-foreground">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-950">
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">Prochain délai</p>
+          <h2 className="mt-2 text-lg font-semibold">
+            {nextDeadline ? new Date(nextDeadline).toLocaleString("fr-DZ") : "Aucun paiement urgent"}
+          </h2>
+          <p className="mt-2 text-sm text-amber-800">
+            Les reçus doivent être envoyés avant expiration pour éviter l’annulation automatique.
+          </p>
+          <Button
+            className="mt-4 bg-amber-600 text-white hover:bg-amber-700"
+            size="sm"
+            onClick={() => openReceiptSheet()}
+            disabled={!awaitingPaymentBookings.length}
+          >
+            <Upload className="me-2 h-4 w-4" />
+            Envoyer un reçu
+          </Button>
+        </div>
       </div>
 
       {/* Bookings table */}

@@ -54,6 +54,12 @@ type NavItem = {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
+  badge?: string | number;
+};
+
+type NavSection = {
+  label: string;
+  items: NavItem[];
 };
 
 const roleAccent: Record<string, { badge: string; avatar: string }> = {
@@ -71,70 +77,120 @@ const roleAccent: Record<string, { badge: string; avatar: string }> = {
   },
 };
 
-function getNavItems(role: string, t: (k: string) => string): NavItem[] {
+function getNavSections(role: string, t: (k: string) => string): NavSection[] {
   switch (role) {
     case "agency":
       return [
-        { label: t("nav.marketplace"), path: "/marketplace", icon: ShoppingCart },
-        { label: t("nav.dashboard"), path: "/dashboard", icon: LayoutDashboard },
-        { label: t("nav.invoices"), path: "/invoices", icon: Receipt },
+        {
+          label: t("nav.group.search"),
+          items: [
+            { label: t("nav.marketplace"), path: "/marketplace", icon: ShoppingCart },
+            { label: t("nav.dashboard"), path: "/dashboard", icon: LayoutDashboard },
+          ],
+        },
+        {
+          label: t("nav.group.finance"),
+          items: [{ label: t("nav.invoices"), path: "/invoices", icon: Receipt }],
+        },
       ];
     case "hotel":
       return [
-        { label: t("nav.inventory"), path: "/inventory", icon: Hotel },
-        { label: "Calendar", path: "/inventory/calendar", icon: Calendar },
-        { label: t("nav.requests"), path: "/requests", icon: ClipboardList },
-        { label: t("nav.analytics"), path: "/analytics", icon: BarChart3 },
-        { label: t("nav.invoices"), path: "/hotel-invoices", icon: Receipt },
+        {
+          label: t("nav.group.workspace"),
+          items: [
+            { label: t("nav.inventory"), path: "/inventory", icon: Hotel },
+            { label: t("nav.calendar"), path: "/inventory/calendar", icon: Calendar },
+            { label: t("nav.requests"), path: "/requests", icon: ClipboardList },
+          ],
+        },
+        {
+          label: t("nav.group.finance"),
+          items: [{ label: t("nav.invoices"), path: "/hotel-invoices", icon: Receipt }],
+        },
+        {
+          label: t("nav.group.insights"),
+          items: [{ label: t("nav.analytics"), path: "/analytics", icon: BarChart3 }],
+        },
       ];
     case "super_admin":
       return [
-        { label: t("nav.admin"), path: "/admin", icon: Shield },
-        { label: t("nav.verifications"), path: "/admin/verifications", icon: CheckCircle },
-        { label: "Payment Reviews", path: "/admin/payment-verifications", icon: Upload },
-        { label: t("nav.users"), path: "/admin/users", icon: Users },
-        { label: t("nav.claims"), path: "/admin/claims", icon: FileText },
-        { label: t("admin.invoices"), path: "/admin/invoices", icon: Receipt },
-        { label: t("admin.auditLogs"), path: "/admin/audit-logs", icon: ScrollText },
+        {
+          label: t("nav.group.command"),
+          items: [{ label: t("nav.admin"), path: "/admin", icon: Shield }],
+        },
+        {
+          label: t("nav.group.reviews"),
+          items: [
+            { label: t("nav.verifications"), path: "/admin/verifications", icon: CheckCircle },
+            { label: t("nav.paymentReviews"), path: "/admin/payment-verifications", icon: Upload },
+            { label: t("nav.claims"), path: "/admin/claims", icon: FileText },
+          ],
+        },
+        {
+          label: t("nav.group.operations"),
+          items: [
+            { label: t("nav.users"), path: "/admin/users", icon: Users },
+            { label: t("admin.invoices"), path: "/admin/invoices", icon: Receipt },
+            { label: t("admin.auditLogs"), path: "/admin/audit-logs", icon: ScrollText },
+          ],
+        },
       ];
     default:
       return [];
   }
 }
 
-function NavLinks({
-  items,
+function NavSections({
+  sections,
   currentPath,
   onNavigate,
 }: {
-  items: NavItem[];
+  sections: NavSection[];
   currentPath: string;
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="space-y-0.5">
-      {items.map(item => {
-        const active =
-          currentPath === item.path ||
-          (item.path !== "/" && currentPath.startsWith(item.path));
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={onNavigate}
-            className={cn(
-              "nav-item",
-              active ? "nav-item-active" : "nav-item-inactive"
-            )}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{item.label}</span>
-            {active && (
-              <span className="ms-auto h-1.5 w-1.5 rounded-full bg-primary-foreground/60" />
-            )}
-          </Link>
-        );
-      })}
+    <nav className="space-y-5">
+      {sections.map(section => (
+        <div key={section.label}>
+          <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+            {section.label}
+          </div>
+          <div className="space-y-0.5">
+            {section.items.map(item => {
+              const active =
+                currentPath === item.path ||
+                (
+                  item.path !== "/" &&
+                  item.path !== "/admin" &&
+                  item.path !== "/inventory" &&
+                  currentPath.startsWith(`${item.path}/`)
+                );
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={onNavigate}
+                  className={cn(
+                    "nav-item",
+                    active ? "nav-item-active" : "nav-item-inactive"
+                  )}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                  {item.badge ? (
+                    <Badge className="ms-auto h-4 min-w-4 justify-center rounded-full px-1 text-[9px]">
+                      {item.badge}
+                    </Badge>
+                  ) : active ? (
+                    <span className="ms-auto h-1.5 w-1.5 rounded-full bg-primary-foreground/60" />
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 }
@@ -163,12 +219,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const role = (user as any)?.role || "";
   const userName = (user as any)?.name || (user as any)?.email || "User";
-  const navItems = getNavItems(role, t);
-  const roleBadge = role.replace("_", " ");
+  const navSections = getNavSections(role, t);
+  const navItems = navSections.flatMap(section => section.items);
+  const roleBadge = role ? t(`role.${role}`) : "";
   const accent = roleAccent[role] ?? { badge: "bg-muted text-muted-foreground border-transparent", avatar: "bg-muted text-muted-foreground" };
+  const workspaceLabel =
+    role === "agency"
+      ? t("workspace.agency")
+      : role === "hotel"
+        ? t("workspace.hotel")
+        : role === "super_admin"
+          ? t("workspace.admin")
+          : t("workspace.public");
 
-  const SidebarUserSection = () => (
-    <div className="mb-4 rounded-lg border border-border/60 bg-muted/40 p-3">
+  const sidebarUserSection = (
+    <div className="mb-5 rounded-lg border border-border/60 bg-muted/40 p-3">
       <div className="flex items-center gap-2.5">
         <UserAvatar name={userName} role={role} size="md" />
         <div className="min-w-0 flex-1">
@@ -177,6 +242,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {roleBadge}
           </span>
         </div>
+      </div>
+      <div className="mt-3 rounded-md border border-border/60 bg-background/70 px-2.5 py-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          {t("workspace.current")}
+        </p>
+        <p className="mt-0.5 truncate text-xs font-medium text-foreground">{workspaceLabel}</p>
       </div>
     </div>
   );
@@ -203,8 +274,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <SheetDescription>{t("app.tagline")}</SheetDescription>
                   </SheetHeader>
                   <div className="p-4">
-                    <SidebarUserSection />
-                    <NavLinks items={navItems} currentPath={location.pathname} onNavigate={() => setMobileOpen(false)} />
+                    {sidebarUserSection}
+                    <NavSections sections={navSections} currentPath={location.pathname} onNavigate={() => setMobileOpen(false)} />
                     <Separator className="my-3" />
                     <nav className="space-y-0.5">
                       {[
@@ -256,19 +327,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 to="/marketplace"
                 className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-accent hover:text-foreground"
               >
-                Explore Hotels
+                {t("nav.exploreHotels")}
               </Link>
               <span className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground/50 cursor-default select-none">
-                Transport
+                {t("nav.transport")}
                 <span className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
-                  Soon
+                  {t("common.soon")}
                 </span>
               </span>
               <Link
                 to="/about"
                 className="rounded-lg px-3 py-1.5 text-sm font-medium text-foreground/75 transition-colors hover:bg-accent hover:text-foreground"
               >
-                About
+                {t("nav.about")}
               </Link>
             </nav>
           ) : null}
@@ -356,8 +427,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {user && navItems.length > 0 ? (
           <aside className="sticky top-[4.5rem] hidden h-[calc(100vh-5rem)] w-60 shrink-0 self-start overflow-y-auto lg:block">
             <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card px-3 py-3 shadow-sm">
-              <SidebarUserSection />
-              <NavLinks items={navItems} currentPath={location.pathname} />
+              {sidebarUserSection}
+              <NavSections sections={navSections} currentPath={location.pathname} />
               <div className="mt-auto">
                 <Separator className="my-3" />
                 <nav className="space-y-0.5">
@@ -403,32 +474,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-4">
             <TravexLogotype tone="light" iconClassName="h-10 w-10" />
             <p className="text-sm leading-relaxed text-slate-400/80">
-              B2B hotel marketplace built for Algeria's travel industry.
+              {t("footer.description")}
             </p>
-            <p className="text-xs text-slate-600">© 2026 Travex. All rights reserved.</p>
+            <p className="text-xs text-slate-600">© 2026 Travex. {t("footer.rights")}.</p>
           </div>
 
           <div>
             <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
-              Solutions
+              {t("footer.solutions")}
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
                 <Link to="/marketplace" className="transition-colors hover:text-white">
-                  Explore Hotels
+                  {t("nav.exploreHotels")}
                 </Link>
               </li>
               <li>
                 <span className="flex items-center gap-1.5 text-slate-500 cursor-default">
-                  Transport &amp; Logistics
+                  {t("nav.transport")}
                   <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
-                    Soon
+                    {t("common.soon")}
                   </span>
                 </span>
               </li>
               <li>
                 <Link to="/marketplace" className="transition-colors hover:text-white">
-                  Partner Support
+                  {t("footer.partnerSupport")}
                 </Link>
               </li>
             </ul>
@@ -436,24 +507,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <div>
             <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
-              Legal
+              {t("footer.legal")}
             </h4>
             <ul className="space-y-2.5 text-sm">
               <li>
-                <Link to="/" className="transition-colors hover:text-white">Privacy Policy</Link>
+                <Link to="/" className="transition-colors hover:text-white">{t("footer.privacy")}</Link>
               </li>
               <li>
-                <Link to="/" className="transition-colors hover:text-white">Terms of Service</Link>
+                <Link to="/" className="transition-colors hover:text-white">{t("footer.terms")}</Link>
               </li>
               <li>
-                <Link to="/" className="transition-colors hover:text-white">API Documentation</Link>
+                <Link to="/" className="transition-colors hover:text-white">{t("footer.apiDocs")}</Link>
               </li>
             </ul>
           </div>
 
           <div>
             <h4 className="mb-4 text-[11px] font-semibold uppercase tracking-widest text-slate-300">
-              Connect
+              {t("footer.contact")}
             </h4>
             <div className="mb-5 flex items-center gap-2.5">
               {[
@@ -492,8 +563,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="border-t border-slate-800/60">
           <div className="app-container flex flex-col items-center justify-between gap-2 py-4 text-xs text-slate-700 sm:flex-row">
-            <span>© 2026 Travex. All rights reserved.</span>
-            <span>Made in Algeria 🇩🇿</span>
+            <span>© 2026 Travex. {t("footer.rights")}.</span>
+            <span>{t("footer.made")}</span>
           </div>
         </div>
       </footer>

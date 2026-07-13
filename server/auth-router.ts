@@ -9,12 +9,26 @@ import {
   setSupabaseSessionCookies,
 } from "./lib/supabase";
 
+const supportedCountry = z.enum(["DZ", "TN"]);
+
 function normalizeAlgerianPhone(value: string) {
   const compact = value.replace(/[\s().-]/g, "");
   if (/^\+213[567]\d{8}$/.test(compact)) return compact;
   if (/^213[567]\d{8}$/.test(compact)) return `+${compact}`;
   if (/^0[567]\d{8}$/.test(compact)) return `+213${compact.slice(1)}`;
   return null;
+}
+
+function normalizeTunisianPhone(value: string) {
+  const compact = value.replace(/[\s().-]/g, "");
+  if (/^\+216[24579]\d{7}$/.test(compact)) return compact;
+  if (/^216[24579]\d{7}$/.test(compact)) return `+${compact}`;
+  if (/^[24579]\d{7}$/.test(compact)) return `+216${compact}`;
+  return null;
+}
+
+function normalizePhone(country: z.infer<typeof supportedCountry>, value: string) {
+  return country === "TN" ? normalizeTunisianPhone(value) : normalizeAlgerianPhone(value);
 }
 
 export const authRouter = createRouter({
@@ -32,7 +46,7 @@ export const authRouter = createRouter({
   login: publicQuery
     .input(
       z.object({
-        email: z.string().email(),
+        email: z.string().trim().email(),
         password: z.string().min(1),
       }),
     )
@@ -58,27 +72,38 @@ export const authRouter = createRouter({
     .input(
       z.object({
         role: z.enum(["agency", "hotel"]),
-        fullName: z.string().min(3),
-        legalName: z.string().min(2),
-        email: z.string().email(),
+        fullName: z.string().trim().min(3),
+        legalName: z.string().trim().min(2),
+        email: z.string().trim().email(),
         password: z.string().min(8),
-        phone: z.string().min(8),
-        wilaya: z.number().int().min(1).max(58),
-        taxId: z.string().optional(),
-        licenseNumber: z.string().optional(),
+        phone: z.string().trim().min(8),
+        country: supportedCountry.default("DZ"),
+        wilaya: z.number().int().positive(),
+        taxId: z.string().trim().optional(),
+        licenseNumber: z.string().trim().optional(),
         locale: z.enum(["fr", "ar", "en"]).default("fr"),
       }),
     )
     .mutation(async ({ input }) => {
       const admin = createSupabaseAdmin();
       const normalizedEmail = input.email.trim().toLowerCase();
-      const normalizedPhone = normalizeAlgerianPhone(input.phone);
+      const normalizedPhone = normalizePhone(input.country, input.phone);
 
       if (!normalizedPhone) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "PHONE_INVALID",
         });
+      }
+
+      const { data: region, error: regionError } = await admin
+        .from("wilayas")
+        .select("code")
+        .eq("code", input.wilaya)
+        .eq("country_code", input.country)
+        .maybeSingle();
+      if (regionError || !region) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "REGION_INVALID" });
       }
 
       if (input.role === "hotel" && !input.taxId && !input.licenseNumber) {
@@ -90,7 +115,7 @@ export const authRouter = createRouter({
         password: input.password,
         email_confirm: true,
         user_metadata: {
-          full_name: input.fullName,
+          full_name: input.fullName.trim(),
           role: input.role,
         },
       });
@@ -111,6 +136,7 @@ export const authRouter = createRouter({
         legal_name: input.legalName.trim(),
         email: normalizedEmail,
         phone: normalizedPhone,
+        country_code: input.country,
         wilaya_code: input.wilaya,
         tax_id: input.taxId?.trim() || null,
         license_number: input.licenseNumber?.trim() || null,
@@ -131,8 +157,8 @@ export const authRouter = createRouter({
   updateProfile: approvedQuery
     .input(
       z.object({
-        fullName: z.string().min(3).optional(),
-        phone: z.string().optional(),
+        fullName: z.string().trim().min(3).optional(),
+        phone: z.string().trim().optional(),
         preferredLocale: z.enum(["fr", "ar", "en"]).optional(),
       }),
     )
@@ -160,8 +186,8 @@ export const authRouter = createRouter({
       z.array(
         z.object({
           type: z.enum(["commercial_registry", "tax_card", "tourism_license", "other"]),
-          storagePath: z.string(),
-          originalName: z.string(),
+          storagePath: z.string().trim().min(1),
+          originalName: z.string().trim().min(1),
         }),
       ),
     )

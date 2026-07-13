@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Filter, MapPin, Search, Star, X } from "lucide-react";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/providers/trpc";
@@ -35,27 +35,50 @@ function Stars({ count }: { count?: number | null }) {
   );
 }
 
+function parsePrice(value: string) {
+  if (!value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
 export default function Marketplace() {
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState("");
-  const [wilayaFilter, setWilayaFilter] = useState<number | undefined>();
+  const initialCountry = searchParams.get("country");
+  const initialWilaya = Number(searchParams.get("wilaya"));
+  const [countryFilter, setCountryFilter] = useState<"DZ" | "TN" | undefined>(
+    initialCountry === "DZ" || initialCountry === "TN" ? initialCountry : undefined,
+  );
+  const [wilayaFilter, setWilayaFilter] = useState<number | undefined>(
+    Number.isInteger(initialWilaya) && initialWilaya > 0 ? initialWilaya : undefined,
+  );
   const [starsFilter, setStarsFilter] = useState<number | undefined>();
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<"recommended" | "price_asc" | "availability" | "stars">("recommended");
 
   const { data: hotels, isLoading } = trpc.marketplace.listHotels.useQuery({
     search: search || undefined,
+    country: countryFilter,
     wilaya: wilayaFilter,
     stars: starsFilter,
-    minPrice: minPrice ? Number(minPrice) : undefined,
-    maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    minPrice: parsePrice(minPrice),
+    maxPrice: parsePrice(maxPrice),
     amenities: selectedAmenities.length ? selectedAmenities : undefined,
     page: 1,
     limit: 24,
   });
-  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery();
+  const { data: countries } = trpc.marketplace.listCountries.useQuery();
+  const { data: wilayas } = trpc.marketplace.listWilayas.useQuery({ country: countryFilter });
   const { data: allAmenities } = trpc.marketplace.listAmenities.useQuery();
+  const sortedHotels = [...(hotels ?? [])].sort((a: any, b: any) => {
+    if (sortBy === "price_asc") return Number(a.minRate ?? Infinity) - Number(b.minRate ?? Infinity);
+    if (sortBy === "availability") return Number(b.totalAvailable ?? 0) - Number(a.totalAvailable ?? 0);
+    if (sortBy === "stars") return Number(b.starRating ?? 0) - Number(a.starRating ?? 0);
+    return 0;
+  });
 
   const toggleAmenity = (key: string) => {
     setSelectedAmenities(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
@@ -63,19 +86,45 @@ export default function Marketplace() {
 
   const clearFilters = () => {
     setWilayaFilter(undefined);
+    setCountryFilter(undefined);
     setStarsFilter(undefined);
     setMinPrice("");
     setMaxPrice("");
     setSelectedAmenities([]);
   };
 
-  const hasFilters = wilayaFilter || starsFilter || minPrice || maxPrice || selectedAmenities.length;
+  const hasFilters = countryFilter || wilayaFilter || starsFilter || minPrice || maxPrice || selectedAmenities.length;
 
   const filterControls = (
     <div className="space-y-6">
       <div className="space-y-2">
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {t("marketplace.wilaya")}
+          Pays
+        </Label>
+        <Select
+          value={countryFilter ?? "all"}
+          onValueChange={value => {
+            setCountryFilter(value === "all" ? undefined : value as "DZ" | "TN");
+            setWilayaFilter(undefined);
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Tous les pays" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les pays</SelectItem>
+            {countries?.map(country => (
+              <SelectItem key={country.code} value={country.code}>
+                {country.nameFr}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {countryFilter === "TN" ? "Gouvernorat" : t("marketplace.wilaya")}
         </Label>
         <Select
           value={wilayaFilter ? String(wilayaFilter) : "all"}
@@ -85,7 +134,7 @@ export default function Marketplace() {
             <SelectValue placeholder={t("marketplace.allWilayas")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t("marketplace.allWilayas")}</SelectItem>
+            <SelectItem value="all">{countryFilter === "TN" ? "Tous les gouvernorats" : t("marketplace.allWilayas")}</SelectItem>
             {wilayas?.map(wilaya => (
               <SelectItem key={wilaya.code} value={String(wilaya.code)}>
                 {wilaya.code} — {wilaya.nameFr}
@@ -181,7 +230,7 @@ export default function Marketplace() {
                 {t("filter")}
                 {hasFilters ? (
                   <span className="absolute -end-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                    {[wilayaFilter, starsFilter, minPrice || maxPrice, ...selectedAmenities].filter(Boolean).length}
+                    {[countryFilter, wilayaFilter, starsFilter, minPrice || maxPrice, ...selectedAmenities].filter(Boolean).length}
                   </span>
                 ) : null}
               </Button>
@@ -222,7 +271,36 @@ export default function Marketplace() {
             <p className="text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">{hotels?.length ?? 0}</span> {t("marketplace.results")}
             </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Trier</span>
+              <Select value={sortBy} onValueChange={value => setSortBy(value as typeof sortBy)}>
+                <SelectTrigger className="h-9 w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recommended">Recommandés</SelectItem>
+                  <SelectItem value="price_asc">Prix croissant</SelectItem>
+                  <SelectItem value="availability">Disponibilité</SelectItem>
+                  <SelectItem value="stars">Étoiles</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-wrap gap-1.5">
+              {countryFilter && countries ? (
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  {countries.find(c => c.code === countryFilter)?.nameFr}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCountryFilter(undefined);
+                      setWilayaFilter(undefined);
+                    }}
+                    className="hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ) : null}
               {wilayaFilter && wilayas ? (
                 <Badge variant="secondary" className="gap-1 text-xs">
                   {wilayas.find(w => w.code === wilayaFilter)?.nameFr}
@@ -255,9 +333,9 @@ export default function Marketplace() {
 
           {isLoading ? (
             <LoadingCards count={8} />
-          ) : hotels && hotels.length > 0 ? (
+          ) : sortedHotels.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {hotels.map((hotel: Record<string, unknown>) => {
+              {sortedHotels.map((hotel: Record<string, unknown>) => {
                 const photos = (hotel.photos || []) as Array<{ storagePath: string }>;
                 const amenities = (hotel.amenities || []) as Array<{ amenity: { key: string; labelFr?: string } }>;
                 const totalAvailable = (hotel.totalAvailable as number) || 0;
@@ -310,7 +388,10 @@ export default function Marketplace() {
                         <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
                           <span className="truncate">
-                            {(hotel.wilaya as Record<string, string>)?.nameFr || "Algérie"}
+                            {[
+                              (hotel.wilaya as Record<string, string>)?.nameFr,
+                              (hotel.country as Record<string, string>)?.nameFr,
+                            ].filter(Boolean).join(", ") || "Algérie"}
                           </span>
                         </p>
                       </div>

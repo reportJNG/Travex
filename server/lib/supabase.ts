@@ -15,6 +15,7 @@ export type ProfileRow = {
   legal_name: string;
   email: string;
   phone: string;
+  country_code: "DZ" | "TN" | string;
   wilaya_code: number | null;
   tax_id: string | null;
   license_number: string | null;

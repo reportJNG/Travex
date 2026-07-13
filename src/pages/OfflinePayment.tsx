@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import {
   AlertCircle,
   AlertTriangle,
@@ -96,7 +96,6 @@ function CopyButton({ text }: { text: string }) {
 
 export default function OfflinePayment() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const bookingId = id || "";
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -119,7 +118,7 @@ export default function OfflinePayment() {
 
   async function handleSubmitReceipt() {
     if (!receiptFile) {
-      toast.error("Please select a receipt file");
+      toast.error("Sélectionnez un reçu de paiement");
       return;
     }
     setIsUploading(true);
@@ -128,9 +127,9 @@ export default function OfflinePayment() {
       // For now simulate upload process
       await new Promise((r) => setTimeout(r, 1200));
       setSubmitted(true);
-      toast.success("Receipt submitted for admin review");
+      toast.success("Reçu envoyé pour vérification");
     } catch {
-      toast.error("Upload failed. Please try again.");
+      toast.error("Échec de l'envoi. Réessayez.");
     } finally {
       setIsUploading(false);
     }
@@ -196,16 +195,16 @@ export default function OfflinePayment() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Offline Payment"
-        title="Complete your payment"
-        description={`Booking reference: ${reference} · ${hotelName}`}
+        eyebrow="Paiement hors ligne"
+        title="Finaliser le paiement"
+        description={`Référence réservation : ${reference} · ${hotelName}`}
       />
 
       {/* Deadline alert */}
       {deadlineStr && !isExpired && !submitted ? (
         <Alert className="border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-600">
           <Clock className="h-4 w-4" />
-          <AlertTitle className="font-semibold">Payment deadline</AlertTitle>
+          <AlertTitle className="font-semibold">Échéance de paiement</AlertTitle>
           <AlertDescription>
             <Countdown deadline={deadlineStr} />
           </AlertDescription>
@@ -215,14 +214,13 @@ export default function OfflinePayment() {
       {isExpired ? (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Payment deadline passed</AlertTitle>
+          <AlertTitle>Échéance dépassée</AlertTitle>
           <AlertDescription>
-            The 48-hour payment window for this booking has expired. The
-            inventory hold has been released. Please{" "}
+            Le délai de paiement de cette réservation a expiré. Le blocage de chambre a été libéré.{" "}
             <Link to="/marketplace" className="font-medium underline">
-              create a new booking
+              Créez une nouvelle réservation
             </Link>{" "}
-            if you still wish to reserve this hotel.
+            si vous souhaitez encore réserver cet hôtel.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -230,11 +228,9 @@ export default function OfflinePayment() {
       {submitted ? (
         <Alert className="border-emerald-300 bg-emerald-50 text-emerald-900 [&>svg]:text-emerald-600">
           <CheckCircle className="h-4 w-4" />
-          <AlertTitle>Receipt submitted</AlertTitle>
+          <AlertTitle>Reçu envoyé</AlertTitle>
           <AlertDescription>
-            Your payment receipt has been submitted for admin review. You will
-            be notified once the payment is verified and your booking is
-            confirmed.
+            Votre reçu est en vérification. Vous serez notifié dès que le paiement est validé.
           </AlertDescription>
         </Alert>
       ) : null}
@@ -250,9 +246,8 @@ export default function OfflinePayment() {
             <div className="space-y-5 p-5">
               <Alert>
                 <AlertDescription className="text-sm">
-                  Transfer the exact amount below to the following account.
-                  Include your booking reference in the transfer memo so our
-                  team can identify your payment.
+                  Transférez le montant exact vers le compte ci-dessous. Ajoutez la référence de réservation
+                  dans le motif du virement pour faciliter la vérification.
                 </AlertDescription>
               </Alert>
 
@@ -260,7 +255,7 @@ export default function OfflinePayment() {
                 <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Beneficiary
+                      Bénéficiaire
                     </div>
                     <div className="mt-0.5 font-semibold">TRAVEX B2B MARKETPLACE</div>
                   </div>
@@ -270,7 +265,7 @@ export default function OfflinePayment() {
                 <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      CCP Account
+                      Compte CCP
                     </div>
                     <div className="mt-0.5 font-mono font-semibold">1234567890 / CLE 12</div>
                   </div>
@@ -280,7 +275,7 @@ export default function OfflinePayment() {
                 <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Amount to transfer
+                      Montant à transférer
                     </div>
                     <div className="mt-0.5 text-xl font-bold text-primary">
                       {totalPrice.toLocaleString("fr-DZ")} DZD
@@ -292,7 +287,7 @@ export default function OfflinePayment() {
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                      Transfer memo (required)
+                      Motif du virement (obligatoire)
                     </div>
                     <div className="mt-0.5 font-mono font-bold text-amber-900">
                       {reference}
@@ -305,9 +300,8 @@ export default function OfflinePayment() {
               <div className="flex items-start gap-2 rounded-lg border bg-sky-50 p-4 text-sm text-sky-800">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
                 <p>
-                  After completing the bank/CCP transfer, upload your payment
-                  receipt below. Our team will verify the transfer within 24
-                  business hours.
+                  Après le virement bancaire/CCP, envoyez le reçu ci-dessous. L'équipe vérifiera le paiement
+                  sous 24 heures ouvrées.
                 </p>
               </div>
             </div>
@@ -322,8 +316,7 @@ export default function OfflinePayment() {
               </div>
               <div className="space-y-4 p-5">
                 <p className="text-sm text-muted-foreground">
-                  Upload a clear photo or scan of your CCP/bank transfer
-                  receipt. Accepted formats: PDF, JPEG, PNG (max 10 MB).
+                  Envoyez une photo ou un scan lisible du reçu de virement. Formats acceptés : PDF, JPEG, PNG (10 MB max).
                 </p>
 
                 <input
@@ -351,9 +344,9 @@ export default function OfflinePayment() {
                     </div>
                   ) : (
                     <div>
-                      <p className="font-medium">Click to select receipt</p>
+                      <p className="font-medium">Sélectionner le reçu</p>
                       <p className="text-xs text-muted-foreground">
-                        PDF, JPG, or PNG · max 10 MB
+                        PDF, JPG ou PNG · 10 MB max
                       </p>
                     </div>
                   )}
@@ -368,10 +361,10 @@ export default function OfflinePayment() {
                     {isUploading ? (
                       <>
                         <div className="me-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        Uploading...
+                        Envoi...
                       </>
                     ) : (
-                      "Submit receipt for review"
+                      "Envoyer le reçu pour vérification"
                     )}
                   </Button>
                 ) : null}
@@ -391,11 +384,11 @@ export default function OfflinePayment() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold">{hotelName}</span>
                   <StatusBadge status={submitted ? "confirmed" : (booking.status as string)}>
-                    {submitted ? "Receipt submitted" : booking.status as string}
+                    {submitted ? "Reçu envoyé" : booking.status as string}
                   </StatusBadge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {hotel.address || hotel.wilaya?.nameFr || "Algeria"}
+                  {hotel.address || [hotel.wilaya?.nameFr, hotel.country?.nameFr].filter(Boolean).join(", ") || "North Africa"}
                 </p>
               </div>
 
@@ -403,27 +396,27 @@ export default function OfflinePayment() {
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Reference</span>
+                  <span className="text-muted-foreground">Référence</span>
                   <span className="font-mono font-medium">{reference}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Check-in</span>
+                  <span className="text-muted-foreground">Arrivée</span>
                   <span>{booking.checkIn as string}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Check-out</span>
+                  <span className="text-muted-foreground">Départ</span>
                   <span>{booking.checkOut as string}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Nights</span>
+                  <span className="text-muted-foreground">Nuits</span>
                   <span>{booking.nights as number}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Room</span>
+                  <span className="text-muted-foreground">Chambre</span>
                   <span>{booking.roomNameSnapshot as string}</span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-muted-foreground">Rooms</span>
+                  <span className="text-muted-foreground">Quantité</span>
                   <span>×{booking.roomsCount as number}</span>
                 </div>
               </div>
@@ -438,14 +431,14 @@ export default function OfflinePayment() {
               </div>
 
               <Badge variant="secondary" className="w-full justify-center">
-                Offline bank transfer
+                Virement bancaire hors ligne
               </Badge>
             </div>
           </div>
 
           <div className="mt-4 flex flex-col gap-2">
             <Button variant="outline" asChild className="w-full">
-              <Link to="/dashboard">Back to dashboard</Link>
+              <Link to="/dashboard">Retour au tableau de bord</Link>
             </Button>
           </div>
         </aside>

@@ -36,6 +36,7 @@ export default function AdminPaymentVerifications() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [paymentRef, setPaymentRef] = useState("");
+  const [now] = useState(() => Date.now());
 
   const { data: verifications, isLoading, refetch } = trpc.admin.listPaymentVerifications.useQuery({
     status: "awaiting_admin_payment_verification",
@@ -79,26 +80,26 @@ export default function AdminPaymentVerifications() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Admin"
-        title="Offline Payment Reviews"
-        description="Review and verify offline payment receipts submitted by travel agencies."
+        eyebrow="Administration"
+        title="Révision des paiements hors ligne"
+        description="Contrôlez les reçus envoyés par les agences, validez les paiements et gardez une trace claire des refus."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
-          label="Pending review"
+          label="À vérifier"
           value={pending.length}
           icon={<Clock className="h-5 w-5" />}
           tone="amber"
         />
         <StatCard
-          label="Approved today"
+          label="Validés aujourd'hui"
           value={0}
           icon={<CheckCircle className="h-5 w-5" />}
           tone="green"
         />
         <StatCard
-          label="Rejected today"
+          label="Refusés aujourd'hui"
           value={0}
           icon={<XCircle className="h-5 w-5" />}
           tone="primary"
@@ -113,22 +114,21 @@ export default function AdminPaymentVerifications() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-4">
               <TabsTrigger value="pending">
-                Pending
+                En attente
                 {pending.length > 0 ? (
                   <Badge className="ms-1.5 bg-amber-500 text-white text-xs px-1.5">
                     {pending.length}
                   </Badge>
                 ) : null}
               </TabsTrigger>
-              <TabsTrigger value="all">All</TabsTrigger>
             </TabsList>
 
-            <TabsContent value={activeTab}>
+            <TabsContent value="pending">
               {pending.length === 0 ? (
                 <EmptyState
                   icon={<CheckCircle className="h-6 w-6" />}
-                  title="No pending receipts"
-                  description="All offline payment receipts have been reviewed."
+                  title="Aucun reçu en attente"
+                  description="Tous les reçus de paiement hors ligne ont été traités."
                 />
               ) : (
                 <>
@@ -136,14 +136,14 @@ export default function AdminPaymentVerifications() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Reference</TableHead>
-                          <TableHead>Agency</TableHead>
-                          <TableHead>Hotel</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Référence</TableHead>
+                          <TableHead>Agence</TableHead>
+                          <TableHead>Hôtel</TableHead>
+                          <TableHead className="text-right">Montant</TableHead>
                           <TableHead className="text-right">Commission</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Deadline</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                          <TableHead>Statut</TableHead>
+                          <TableHead>Échéance</TableHead>
+                          <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -153,7 +153,7 @@ export default function AdminPaymentVerifications() {
                           const deadline = booking.paymentDeadline;
                           const isExpiring =
                             deadline &&
-                            new Date(deadline).getTime() - Date.now() < 3600000 * 3;
+                            new Date(deadline).getTime() - now < 3600000 * 3;
 
                           return (
                             <TableRow key={booking.id}>
@@ -237,7 +237,7 @@ export default function AdminPaymentVerifications() {
                                 size="sm"
                                 onClick={() => openReview(booking)}
                               >
-                                Review
+                                Vérifier
                               </Button>
                             </div>
                           </div>
@@ -256,7 +256,7 @@ export default function AdminPaymentVerifications() {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
           <SheetHeader>
-            <SheetTitle>Review payment receipt</SheetTitle>
+            <SheetTitle>Vérifier le reçu de paiement</SheetTitle>
           </SheetHeader>
 
           {selectedBooking ? (

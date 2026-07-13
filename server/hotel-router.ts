@@ -13,12 +13,48 @@ async function getOwnedHotel(ctx: { supabase: any; user: { id: string } }) {
   return data;
 }
 
+const supportedCountry = z.enum(["DZ", "TN"]);
+const optionalTrimmed = z.string().trim().optional();
+const optionalUrl = z.string().trim().url().optional();
+const optionalCoordinate = z
+  .string()
+  .trim()
+  .refine((value) => value === "" || Number.isFinite(Number(value)), "Invalid coordinate")
+  .optional();
+
+const hotelProfileInput = z.object({
+  name: z.string().trim().min(2).optional(),
+  description: optionalTrimmed,
+  countryCode: supportedCountry.optional(),
+  wilayaCode: z.number().int().positive().optional(),
+  address: optionalTrimmed,
+  starRating: z.number().int().min(1).max(5).optional(),
+  phone: optionalTrimmed,
+  email: z.string().trim().email().optional(),
+  websiteUrl: optionalUrl,
+  facebookUrl: optionalUrl,
+  instagramUrl: optionalUrl,
+  googleMapsUrl: optionalUrl,
+});
+
+async function assertRegionInCountry(ctx: { supabase: any }, countryCode: string, wilayaCode: number) {
+  const { data, error } = await ctx.supabase
+    .from("wilayas")
+    .select("code")
+    .eq("code", wilayaCode)
+    .eq("country_code", countryCode)
+    .maybeSingle();
+  if (error || !data) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "REGION_INVALID" });
+  }
+}
+
 export const hotelRouter = createRouter({
   myHotel: hotelQuery.query(async ({ ctx }) => {
     const { data, error } = await ctx.supabase
       .from("hotels")
       .select(
-        "*, wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
+        "*, country:countries(*), wilaya:wilayas(*), photos:hotel_photos(*), amenities:hotel_amenities(amenity:amenities(*)), rooms:room_types(*)",
       )
       .eq("owner_profile_id", ctx.user.id)
       .maybeSingle();
@@ -28,20 +64,12 @@ export const hotelRouter = createRouter({
 
   createHotel: hotelQuery
     .input(
-      z.object({
-        name: z.string().min(2),
-        description: z.string().optional(),
-        wilayaCode: z.number(),
-        address: z.string().optional(),
-        starRating: z.number().min(1).max(5).optional(),
-        phone: z.string().optional(),
-        email: z.string().email().optional(),
-        websiteUrl: z.string().optional(),
-        facebookUrl: z.string().optional(),
-        instagramUrl: z.string().optional(),
-        googleMapsUrl: z.string().optional(),
-        lat: z.string().optional(),
-        lng: z.string().optional(),
+      hotelProfileInput.extend({
+        name: z.string().trim().min(2),
+        countryCode: supportedCountry.default("DZ"),
+        wilayaCode: z.number().int().positive(),
+        lat: optionalCoordinate,
+        lng: optionalCoordinate,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -51,6 +79,7 @@ export const hotelRouter = createRouter({
         .eq("owner_profile_id", ctx.user.id)
         .maybeSingle();
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "HOTEL_EXISTS" });
+      await assertRegionInCountry(ctx, input.countryCode, input.wilayaCode);
 
       const { data, error } = await ctx.supabase
         .from("hotels")
@@ -59,6 +88,7 @@ export const hotelRouter = createRouter({
           is_seeded: false,
           name: input.name,
           description: input.description || null,
+          country_code: input.countryCode,
           wilaya_code: input.wilayaCode,
           address: input.address || null,
           star_rating: input.starRating || null,
@@ -83,30 +113,23 @@ export const hotelRouter = createRouter({
 
   updateHotel: hotelQuery
     .input(
-      z.object({
-        name: z.string().min(2).optional(),
-        description: z.string().optional(),
-        wilayaCode: z.number().optional(),
-        address: z.string().optional(),
-        starRating: z.number().min(1).max(5).optional(),
-        phone: z.string().optional(),
-        email: z.string().email().optional(),
-        websiteUrl: z.string().optional(),
-        facebookUrl: z.string().optional(),
-        instagramUrl: z.string().optional(),
-        googleMapsUrl: z.string().optional(),
+      hotelProfileInput.extend({
         amenityIds: z.array(z.number()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const hotel = await getOwnedHotel(ctx);
       if (!hotel) throw new TRPCError({ code: "NOT_FOUND", message: "HOTEL_NOT_FOUND" });
+      const nextCountry = input.countryCode ?? hotel.country_code ?? "DZ";
+      const nextWilaya = input.wilayaCode ?? hotel.wilaya_code;
+      if (nextWilaya) await assertRegionInCountry(ctx, nextCountry, nextWilaya);
 
       const { error } = await ctx.supabase
         .from("hotels")
         .update({
           ...(input.name && { name: input.name }),
           ...(input.description !== undefined && { description: input.description }),
+          ...(input.countryCode && { country_code: input.countryCode }),
           ...(input.wilayaCode && { wilaya_code: input.wilayaCode }),
           ...(input.address !== undefined && { address: input.address }),
           ...(input.starRating && { star_rating: input.starRating }),
@@ -142,10 +165,10 @@ export const hotelRouter = createRouter({
     .input(
       z.object({
         id: z.string().uuid().optional(),
-        name: z.string().min(1),
+        name: z.string().trim().min(1),
         totalCapacity: z.number().int().positive(),
         b2bRate: z.number().positive(),
-        thumbnailPath: z.string().optional(),
+        thumbnailPath: optionalTrimmed,
       }),
     )
     .mutation(async ({ ctx, input }) => {
