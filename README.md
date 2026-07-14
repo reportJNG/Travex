@@ -10,15 +10,17 @@ Travex is a Vite React app with a Hono/tRPC API backed by Supabase Auth, RLS tab
 npm ci
 ```
 
-2. Create `.env` from `.env.example` and set:
+2. Create `.env` from `.env.example` and set the required Supabase variables:
 
 ```bash
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
 ```
+
+`CRON_SECRET` is optional. In production, cron routes reject every request until it is set; when set, they require `Authorization: Bearer <CRON_SECRET>`.
+
+`DATABASE_URL` is optional for the application and required only for Drizzle commands or direct PostgreSQL seed scripts.
 
 3. Run the app:
 
@@ -37,4 +39,4 @@ npm run build
 
 ## Vercel
 
-Set the Supabase environment variables in Vercel. The project uses `vercel.json` to build the Vite app into `dist/public`, route `/api/*` to the Hono function, and route all other paths to the SPA entry.
+Set the server Supabase environment variables in Vercel. The project uses `vercel.json` to build the Vite app into `dist/public`, route `/api/*` to the Hono function, and route all other paths to the SPA entry.
